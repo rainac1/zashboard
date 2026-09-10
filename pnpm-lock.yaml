@@ -7,6 +7,15 @@ settings:
 importers:
   .:
     dependencies:
+      '@bufbuild/protobuf':
+        specifier: ^2.13.0
+        version: 2.14.1
+      '@connectrpc/connect':
+        specifier: ^2.1.2
+        version: 2.1.2(@bufbuild/protobuf@2.14.1)
+      '@connectrpc/connect-web':
+        specifier: ^2.1.2
+        version: 2.1.2(@bufbuild/protobuf@2.14.1)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.14.1))
       '@eslint/plugin-kit':
         specifier: ^0.7.2
         version: 0.7.2
@@ -31,6 +40,12 @@ importers:
       '@vueuse/core':
         specifier: ^14.4.0
         version: 14.4.0(vue@3.5.40(typescript@6.0.3))
+      '@xterm/addon-fit':
+        specifier: ^0.11.0
+        version: 0.11.0
+      '@xterm/xterm':
+        specifier: ^6.0.0
+        version: 6.0.0
       axios:
         specifier: ^1.19.0
         version: 1.19.0(debug@4.4.3(supports-color@3.2.3))(supports-color@3.2.3)
@@ -82,6 +97,9 @@ importers:
       tippy.js:
         specifier: ^6.3.7
         version: 6.3.7
+      uqr:
+        specifier: ^0.1.3
+        version: 0.1.3
       uuid:
         specifier: ^14.0.1
         version: 14.0.1
@@ -104,6 +122,12 @@ importers:
         specifier: ^4.1.0
         version: 4.1.0(vue@3.5.40(typescript@6.0.3))
     devDependencies:
+      '@bufbuild/buf':
+        specifier: ^1.72.0
+        version: 1.72.0
+      '@bufbuild/protoc-gen-es':
+        specifier: ^2.13.0
+        version: 2.14.1(@bufbuild/protobuf@2.14.1)(supports-color@3.2.3)
       '@tailwindcss/postcss':
         specifier: ^4.3.3
         version: 4.3.3
@@ -1027,6 +1051,119 @@ packages:
         integrity: sha512-eY+Yn3dCqTGmyiq2QRU66lA5FL8lqqqvecHt0fF3uHONIa7ToYsaCiWV8lOKqAs0Rb2SjixiKFROngnulPtt2g==,
       }
     engines: { node: ^22.18.0 || >=24.11.0 }
+
+  '@bufbuild/buf-darwin-arm64@1.72.0':
+    resolution:
+      {
+        integrity: sha512-rKHRvjwAThapxIoOn92vIoTjYSz5FmRemDRLU4BYT4T6QWMEC13PM3/pPnqVgsNKZ5aW7iYDm9ztnisEqSi5yA==,
+      }
+    engines: { node: '>=12' }
+    cpu: [arm64]
+    os: [darwin]
+
+  '@bufbuild/buf-darwin-x64@1.72.0':
+    resolution:
+      {
+        integrity: sha512-4TQ1AGft8sGspNg9NMsEjsKKis7nGaVV8tZLnNa3cKUBmx22gwOnB6VRhgKWwjf+BDqr85lUEzQ6wHCboNUutg==,
+      }
+    engines: { node: '>=12' }
+    cpu: [x64]
+    os: [darwin]
+
+  '@bufbuild/buf-linux-aarch64@1.72.0':
+    resolution:
+      {
+        integrity: sha512-cbIsUcgM5bHhbZWcDaAXqaYOAi8N0c0u+NiDydwVmZ04Et3s1EZ3TDqfQDRzwvoBPDP+lsO6YuTRXX6nI28x4w==,
+      }
+    engines: { node: '>=12' }
+    cpu: [arm64]
+    os: [linux]
+
+  '@bufbuild/buf-linux-armv7@1.72.0':
+    resolution:
+      {
+        integrity: sha512-v/bXVsFL8YNm2HgosGb9r3+nAt4jQiUc3r3JipYuiVY3DAJZAjoEvcak6/BkxQMTEQz9Zb8gRRlule9IFkbc5g==,
+      }
+    engines: { node: '>=12' }
+    cpu: [arm]
+    os: [linux]
+
+  '@bufbuild/buf-linux-x64@1.72.0':
+    resolution:
+      {
+        integrity: sha512-4xHGXEjqFxo1wX1zMGq4CzhYt5++nrj4C7k30j+YmGtvqCnipfdSe+V6kknBYRfYswVZEUwUbQOh6pnMTcGcrA==,
+      }
+    engines: { node: '>=12' }
+    cpu: [x64]
+    os: [linux]
+
+  '@bufbuild/buf-win32-arm64@1.72.0':
+    resolution:
+      {
+        integrity: sha512-WH7ClsoB9A0e/5fFhx0DLqLzillYPRdHBhlwzihgvjGci0bBdyJVHSQGf0B9uspCMU6sn6W/N1S9/2vvQBNMug==,
+      }
+    engines: { node: '>=12' }
+    cpu: [arm64]
+    os: [win32]
+
+  '@bufbuild/buf-win32-x64@1.72.0':
+    resolution:
+      {
+        integrity: sha512-X3eWqFzhDmu8CYQZz+Fu7i+PgH+yUl8UwJ5+x+bhZRYAIdcijikthodk60c5u/qq42m1Z2XAnAGyp/mTf7IffA==,
+      }
+    engines: { node: '>=12' }
+    cpu: [x64]
+    os: [win32]
+
+  '@bufbuild/buf@1.72.0':
+    resolution:
+      {
+        integrity: sha512-BwBKTX/WXkhAhqWJGrEKnqU03/4tK1O0OozSlwUMBCOEo8pLL3xu3M24RT3+umExEeM0wjlANO6axqGWMqtt4Q==,
+      }
+    engines: { node: '>=12' }
+    hasBin: true
+
+  '@bufbuild/protobuf@2.14.1':
+    resolution:
+      {
+        integrity: sha512-agRJn3+EJDUe8AvxTx/LnHA/GErvLE62pSaSk7+MwFOtOv8eWBu/qCq2qoZjBjVZ3C2aiFJCveuSs17KMkYGOw==,
+      }
+
+  '@bufbuild/protoc-gen-es@2.14.1':
+    resolution:
+      {
+        integrity: sha512-agiGxvA1VAzWPdtOiktK39BNvGgHc1jHBCI1XYQtCQDSpt/5pZ7jTRGKv0fYzExbovDVu+yxJq4Srpv8zCIvUQ==,
+      }
+    engines: { node: '>=22' }
+    hasBin: true
+    peerDependencies:
+      '@bufbuild/protobuf': 2.14.1
+    peerDependenciesMeta:
+      '@bufbuild/protobuf':
+        optional: true
+
+  '@bufbuild/protoplugin@2.14.1':
+    resolution:
+      {
+        integrity: sha512-oddqHkmUlBSo1TgswPW6hzrP/3nxMIdKUMcB6/NSY/oUkepDV7SealCZlE0ZxhLRIgmvDSuNWOb0HEKfsWPJww==,
+      }
+
+  '@connectrpc/connect-web@2.1.2':
+    resolution:
+      {
+        integrity: sha512-1tfaK85MU+gJjwwmL31d2rzdf0XCYX99chZf63uG89SGBUd4XuZ4ZzhGo2u79TPXOE6nLIZQ2okrpyey42PYdg==,
+      }
+    peerDependencies:
+      '@bufbuild/protobuf': ^2.7.0
+      '@connectrpc/connect': 2.1.2
+
+  '@connectrpc/connect@2.1.2':
+    resolution:
+      {
+        integrity: sha512-MXkBijtcX09R10Eb6sFeIetc6w6746eio6xtfuyVOH7oQAacT1X0GzMIQFux6Qy8cq3W/T5qX5Bei8YbFtmRGA==,
+      }
+    peerDependencies:
+      '@bufbuild/protobuf': ^2.7.0
 
   '@dimforge/rapier3d-compat@0.12.0':
     resolution:
@@ -2296,6 +2433,14 @@ packages:
       }
     engines: { node: ^18.18.0 || ^20.9.0 || >=21.1.0 }
 
+  '@typescript/vfs@1.6.4':
+    resolution:
+      {
+        integrity: sha512-PJFXFS4ZJKiJ9Qiuix6Dz/OwEIqHD7Dme1UwZhTK11vR+5dqW2ACbdndWQexBzCx+CPuMe5WBYQWCsFyGlQLlQ==,
+      }
+    peerDependencies:
+      typescript: '*'
+
   '@vitejs/plugin-vue-jsx@5.1.6':
     resolution:
       {
@@ -2519,6 +2664,18 @@ packages:
       }
     peerDependencies:
       vue: ^3.5.0
+
+  '@xterm/addon-fit@0.11.0':
+    resolution:
+      {
+        integrity: sha512-jYcgT6xtVYhnhgxh3QgYDnnNMYTcf8ElbxxFzX0IZo+vabQqSPAjC3c1wJrKB5E19VwQei89QCiZZP86DCPF7g==,
+      }
+
+  '@xterm/xterm@6.0.0':
+    resolution:
+      {
+        integrity: sha512-TQwDdQGtwwDt+2cgKDLn0IRaSxYu1tSUjgKarSDkUM0ZNiSRXFpjxEsvc/Zgc5kq5omJ+V0a8/kIM2WD3sMOYg==,
+      }
 
   acorn-jsx@5.3.2:
     resolution:
@@ -5103,6 +5260,14 @@ packages:
       eslint: ^8.57.0 || ^9.0.0 || ^10.0.0
       typescript: '>=4.8.4 <6.1.0'
 
+  typescript@5.4.5:
+    resolution:
+      {
+        integrity: sha512-vcI4UpRgg81oIRUFwR0WSIHKt11nJ7SAVlYNIu+QpqeyXP+gpQJy/Z4+F0aGxSE4MqwjyXvW/TzgkLAx2AGHwQ==,
+      }
+    engines: { node: '>=14.17' }
+    hasBin: true
+
   typescript@6.0.3:
     resolution:
       {
@@ -5230,6 +5395,12 @@ packages:
     hasBin: true
     peerDependencies:
       browserslist: '>= 4.21.0'
+
+  uqr@0.1.3:
+    resolution:
+      {
+        integrity: sha512-0rjE8iEJe4YmT9TOhwsZtqCMRLc5DXZUI2UEYUUg63ikBkqqE5EYWaI0etFe/5KUcmcYwLih2RND1kq+hrUJXA==,
+      }
 
   uri-js@4.4.1:
     resolution:
@@ -6307,6 +6478,64 @@ snapshots:
       '@babel/helper-string-parser': 8.0.0
       '@babel/helper-validator-identifier': 8.0.4
 
+  '@bufbuild/buf-darwin-arm64@1.72.0':
+    optional: true
+
+  '@bufbuild/buf-darwin-x64@1.72.0':
+    optional: true
+
+  '@bufbuild/buf-linux-aarch64@1.72.0':
+    optional: true
+
+  '@bufbuild/buf-linux-armv7@1.72.0':
+    optional: true
+
+  '@bufbuild/buf-linux-x64@1.72.0':
+    optional: true
+
+  '@bufbuild/buf-win32-arm64@1.72.0':
+    optional: true
+
+  '@bufbuild/buf-win32-x64@1.72.0':
+    optional: true
+
+  '@bufbuild/buf@1.72.0':
+    optionalDependencies:
+      '@bufbuild/buf-darwin-arm64': 1.72.0
+      '@bufbuild/buf-darwin-x64': 1.72.0
+      '@bufbuild/buf-linux-aarch64': 1.72.0
+      '@bufbuild/buf-linux-armv7': 1.72.0
+      '@bufbuild/buf-linux-x64': 1.72.0
+      '@bufbuild/buf-win32-arm64': 1.72.0
+      '@bufbuild/buf-win32-x64': 1.72.0
+
+  '@bufbuild/protobuf@2.14.1': {}
+
+  '@bufbuild/protoc-gen-es@2.14.1(@bufbuild/protobuf@2.14.1)(supports-color@3.2.3)':
+    dependencies:
+      '@bufbuild/protoplugin': 2.14.1(supports-color@3.2.3)
+    optionalDependencies:
+      '@bufbuild/protobuf': 2.14.1
+    transitivePeerDependencies:
+      - supports-color
+
+  '@bufbuild/protoplugin@2.14.1(supports-color@3.2.3)':
+    dependencies:
+      '@bufbuild/protobuf': 2.14.1
+      '@typescript/vfs': 1.6.4(supports-color@3.2.3)(typescript@5.4.5)
+      typescript: 5.4.5
+    transitivePeerDependencies:
+      - supports-color
+
+  '@connectrpc/connect-web@2.1.2(@bufbuild/protobuf@2.14.1)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.14.1))':
+    dependencies:
+      '@bufbuild/protobuf': 2.14.1
+      '@connectrpc/connect': 2.1.2(@bufbuild/protobuf@2.14.1)
+
+  '@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.14.1)':
+    dependencies:
+      '@bufbuild/protobuf': 2.14.1
+
   '@dimforge/rapier3d-compat@0.12.0': {}
 
   '@emnapi/core@1.11.1':
@@ -6920,6 +7149,13 @@ snapshots:
       '@typescript-eslint/types': 8.65.0
       eslint-visitor-keys: 5.0.1
 
+  '@typescript/vfs@1.6.4(supports-color@3.2.3)(typescript@5.4.5)':
+    dependencies:
+      debug: 4.4.3(supports-color@3.2.3)
+      typescript: 5.4.5
+    transitivePeerDependencies:
+      - supports-color
+
   '@vitejs/plugin-vue-jsx@5.1.6(supports-color@3.2.3)(vite@8.1.5(@types/node@26.1.2)(esbuild@0.27.3)(jiti@2.7.0)(terser@5.48.0)(yaml@2.9.0))(vue@3.5.40(typescript@6.0.3))':
     dependencies:
       '@babel/core': 7.29.7(supports-color@3.2.3)
@@ -7109,6 +7345,10 @@ snapshots:
   '@vueuse/shared@14.4.0(vue@3.5.40(typescript@6.0.3))':
     dependencies:
       vue: 3.5.40(typescript@6.0.3)
+
+  '@xterm/addon-fit@0.11.0': {}
+
+  '@xterm/xterm@6.0.0': {}
 
   acorn-jsx@5.3.2(acorn@8.18.0):
     dependencies:
@@ -8685,6 +8925,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  typescript@5.4.5: {}
+
   typescript@6.0.3: {}
 
   ufo@1.6.4: {}
@@ -8738,6 +8980,8 @@ snapshots:
       browserslist: 4.28.2
       escalade: 3.2.0
       picocolors: 1.1.1
+
+  uqr@0.1.3: {}
 
   uri-js@4.4.1:
     dependencies:

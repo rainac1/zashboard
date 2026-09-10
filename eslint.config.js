@@ -26,8 +26,8 @@ export default [
           paths: [
             {
               name: '@/assembly/backend',
-              importNames: ['core', 'resetCore'],
-              message: '视图层只能通过 can() 读能力,不要直接判断内核。',
+              importNames: ['channel', 'core', 'apiVersion', 'resetCore'],
+              message: '视图层只能通过 can() 读能力,不要直接判断通道 / 内核。',
             },
             {
               name: '@/api',
@@ -37,7 +37,7 @@ export default [
           patterns: [
             {
               // 只挡后端方言模块;api/geoip、api/latency 是与后端无关的外部服务调用,不受限。
-              group: ['@/api/clash'],
+              group: ['@/api/clash', '@/api/singbox', '@/api/singbox/**'],
               message: '视图层不要直接调后端 api,请走 assembly 对应域的门面。',
             },
           ],

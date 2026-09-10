@@ -1,3 +1,4 @@
+import { can } from '@/assembly/backend'
 import { useCtrlsBar } from '@/composables/useCtrlsBar'
 import { LIST_DISPLAY_STYLE, LOG_LEVEL } from '@/constant'
 import { useTooltip } from '@/helper/tooltip'
@@ -64,16 +65,32 @@ export default defineComponent({
       const types: string[] = []
       const levels: string[] = []
 
-      for (const log of logs.value) {
-        const index = log.payload.indexOf(' ')
-        const type = index === -1 ? log.payload : log.payload.slice(0, index)
+      if (can('logTypeFilter')) {
+        for (const log of logs.value) {
+          const startIndex = log.payload.startsWith('[') ? log.payload.indexOf(']') + 2 : 0
+          const endIndex = log.payload.indexOf(':', startIndex)
+          const type = log.payload.slice(startIndex, endIndex + 1)
 
-        if (!types.includes(type)) {
-          types.push(type)
+          if (!types.includes(type)) {
+            types.push(type)
+          }
+
+          if (!levels.includes(log.type)) {
+            levels.push(log.type)
+          }
         }
+      } else {
+        for (const log of logs.value) {
+          const index = log.payload.indexOf(' ')
+          const type = index === -1 ? log.payload : log.payload.slice(0, index)
 
-        if (!levels.includes(log.type)) {
-          levels.push(log.type)
+          if (!types.includes(type)) {
+            types.push(type)
+          }
+
+          if (!levels.includes(log.type)) {
+            levels.push(log.type)
+          }
         }
       }
 

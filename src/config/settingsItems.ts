@@ -346,6 +346,11 @@ export const SETTINGS_CATEGORIES: SettingsCategory[] = [
         section: 'settingsSectionProxyDisplay',
       },
       {
+        key: `${SETTINGS_MENU_KEY.proxies}.customGlobalNode`,
+        label: 'customGlobalNode',
+        section: 'settingsSectionProxyDisplay',
+      },
+      {
         key: `${SETTINGS_MENU_KEY.proxies}.proxyPreviewType`,
         label: 'proxyPreviewType',
         section: 'settingsSectionProxyDisplay',

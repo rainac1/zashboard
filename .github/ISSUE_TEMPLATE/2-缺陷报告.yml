@@ -33,8 +33,8 @@ body:
     id: zashboard-usage
     attributes:
       label: zashboard 使用方式
-      description: 您使用zashboard的方式 (e.g., mihomo cli, openwrt插件如Nikki, Docker)
-      placeholder: 'e.g., mihomo cli, openwrt插件如Nikki, Docker'
+      description: 您使用zashboard的方式 (e.g., sing-box cli, mihomo cli, openwrt插件如Nikki, Docker)
+      placeholder: 'e.g., sing-box cli, mihomo cli, openwrt插件如Nikki, Docker'
     validations:
       required: true
 

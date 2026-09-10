@@ -178,6 +178,21 @@ export default defineComponent<{
             {highlightedText(CONNECTIONS_TABLE_ACCESSOR_KEY.InboundUser)}
           </div>
         ),
+        [CONNECTIONS_TABLE_ACCESSOR_KEY.Protocol]: () => (
+          <div class="whitespace-nowrap">
+            {highlightedText(CONNECTIONS_TABLE_ACCESSOR_KEY.Protocol)}
+          </div>
+        ),
+        [CONNECTIONS_TABLE_ACCESSOR_KEY.OutboundType]: () => (
+          <div class="whitespace-nowrap">
+            {highlightedText(CONNECTIONS_TABLE_ACCESSOR_KEY.OutboundType)}
+          </div>
+        ),
+        [CONNECTIONS_TABLE_ACCESSOR_KEY.FromOutbound]: () => (
+          <div class="whitespace-nowrap">
+            {highlightedText(CONNECTIONS_TABLE_ACCESSOR_KEY.FromOutbound)}
+          </div>
+        ),
         [CONNECTIONS_TABLE_ACCESSOR_KEY.Close]: () => {
           const closeButton = (
             <button

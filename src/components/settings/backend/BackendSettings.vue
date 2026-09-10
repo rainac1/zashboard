@@ -178,7 +178,7 @@ const canShowTunMode = computed(
 const hasVisibleActions = computed(() =>
   backendActions.value.some((action) => isSettingVisible(action.key)),
 )
-const showDnsQuery = isVisibleDnsQuery
+const showDnsQuery = computed(() => isVisibleDnsQuery.value && can('dnsQuery'))
 const hasVisibleNetworkSettings = computed(
   () =>
     can('configPatch') &&

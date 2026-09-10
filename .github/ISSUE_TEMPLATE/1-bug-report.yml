@@ -33,8 +33,8 @@ body:
     id: zashboard-usage
     attributes:
       label: zashboard Usage
-      description: How you are using zashboard (e.g., mihomo cli, openwrt plugin like Nikki, Docker)
-      placeholder: 'e.g., mihomo cli, openwrt plugin like Nikki, Docker'
+      description: How you are using zashboard (e.g., sing-box cli, mihomo cli, openwrt plugin like Nikki, Docker)
+      placeholder: 'e.g., sing-box cli, mihomo cli, openwrt plugin like Nikki, Docker'
     validations:
       required: true
 

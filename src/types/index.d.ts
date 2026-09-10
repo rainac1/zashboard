@@ -1,18 +1,20 @@
-// 只剩 Clash REST/WS 一种后端。字段保留是为了让旧记录的迁移与 URL 参数解析
-// 有个明确的落点,不必在每处都写字面量。
-export type BackendType = 'clash'
+import type { Connection as SingboxConnectionRawMessage } from '@/gen/daemon/started_service_pb'
+
+export type BackendType = 'clash' | 'singbox'
 
 export type Backend = {
+  // 后端登录类型:'clash' 走 Clash REST/WS API,'singbox' 走 sing-box API(gRPC)。
+  // 旧记录缺省按 'clash' 迁移。
   type: BackendType
   protocol: string
   host: string
   port: string
-  secondaryPath: string
-  password: string // Clash secret
+  secondaryPath: string // 仅 clash
+  password: string // 通用:Clash secret / sing-box gRPC Bearer token
   uuid: string
   label?: string
-  disableUpgradeCore?: boolean
-  disableTunMode?: boolean
+  disableUpgradeCore?: boolean // 仅 clash
+  disableTunMode?: boolean // 仅 clash
 }
 
 export type Config = {
@@ -144,7 +146,7 @@ export type ClashConnectionRawMessage = {
   }
 }
 
-export type ConnectionRawMessage = ClashConnectionRawMessage
+export type ConnectionRawMessage = ClashConnectionRawMessage | SingboxConnectionRawMessage
 
 export type Connection = ConnectionRawMessage & {
   downloadSpeed: number

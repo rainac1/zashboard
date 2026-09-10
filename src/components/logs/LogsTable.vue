@@ -4,14 +4,17 @@
     :columns="columns"
     sorting-key="config/logs-table-sorting"
     :estimate-size="36"
+    :row-class="rowClass"
+    @row-click="handlerRowClick"
   />
 </template>
 
 <script setup lang="ts">
+import { can } from '@/assembly/backend'
 import HighlightText from '@/components/common/HighlightText.vue'
 import VirtualTable from '@/components/common/VirtualTable.vue'
 import { LOG_LEVEL } from '@/constant'
-import { logFilter } from '@/store/logs'
+import { getLogConnectionID, logFilter } from '@/store/logs'
 import type { LogWithSeq } from '@/types'
 import type { ColumnDef } from '@tanstack/vue-table'
 import { h } from 'vue'
@@ -19,6 +22,10 @@ import { useI18n } from 'vue-i18n'
 
 defineProps<{
   logs: LogWithSeq[]
+}>()
+
+const emits = defineEmits<{
+  (e: 'connectionClick', connectionID: string): void
 }>()
 
 const { t } = useI18n()
@@ -78,4 +85,20 @@ const columns: ColumnDef<LogWithSeq>[] = [
     meta: { cellClass: 'max-w-none!' },
   },
 ]
+
+const connectionIDOf = (log: LogWithSeq) => {
+  if (!can('logConnectionDetail')) return null
+
+  return getLogConnectionID(log.payload)
+}
+
+const rowClass = (log: LogWithSeq) => (connectionIDOf(log) ? 'cursor-pointer' : undefined)
+
+const handlerRowClick = (log: LogWithSeq) => {
+  const connectionID = connectionIDOf(log)
+
+  if (connectionID) {
+    emits('connectionClick', connectionID)
+  }
+}
 </script>

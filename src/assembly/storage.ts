@@ -1,5 +1,5 @@
 // 组装层 · storage。/storage/zashboard 为设置同步端点,是 mihomo 扩展,
-// 其它内核没有,故按 core 轴(syncSettings 能力)门控。
+// sing-box 无论走哪条通道都没有,故按 core 轴(syncSettings 能力)门控。
 //
 // 登录后立刻同步设置的调用会早于内核探测完成,此时 core 仍是 'unknown',
 // 直接判定会误伤 mihomo 后端,所以先 coreReady() 等探测有结论再决定。

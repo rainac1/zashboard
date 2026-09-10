@@ -24,8 +24,10 @@ You can access the online zashboard at the following link:
 
 You can download the zashboard files here:
 
+> All builds include sing-box native API support.
+
 > [!WARNING]
-> Support for sing-box has been removed. [Learn more about this
+> Support for sing-box will be removed in the next release. [Learn more about this
 > decision](./docs/sing-box-deprecation.md).
 
 release:
@@ -60,17 +62,17 @@ docker run -d -p 80:80 ghcr.io/zephyruso/zashboard:latest
 
 1. The connection table can be dragged with the left mouse button, and right-clicking can copy cell content.
 2. Right-clicking on a node / node group card will perform a speedtest for the node / node group.
-3. The proxy group sorting is based on the node order in the GLOBAL group, which follows the configuration file order. If you need custom ordering, you can specify the order by overriding the GLOBAL group.
+3. The proxy group sorting is based on the node order in the GLOBAL group. In Mihomo, it follows the configuration file order, while in sing-box, route.final is placed first, with the rest following the configuration file order. If you need custom ordering, you can specify the order by overriding the GLOBAL group.
 4. The dashboard supports PWA (Progressive Web App), which can provide a native app-like experience on mobile devices through "Add to Home Screen".
-5. The dashboard's upgrade button and auto-upgrade functionality require proper configuration of the core's UI download path ([mihomo](https://wiki.metacubex.one/config/general/#_9)), otherwise clicking update may result in updating to the core's default panel.
+5. The dashboard's upgrade button and auto-upgrade functionality require proper configuration of the core's UI download path ([mihomo](https://wiki.metacubex.one/config/general/#_9) | [sing-box](https://sing-box.sagernet.org/configuration/experimental/clash-api/#external_ui_download_url)), otherwise clicking update may result in updating to the core's default panel.
 
 ## 提示
 
 1. 连接表格可被鼠标左键拖动，右键可复制单元格内容。
 2. 右键点击节点/节点组卡片可对节点/节点组进行测速。
-3. 面板的节点组排序是根据GLOBAL组中的节点顺序排序的，即按配置文件的顺序，如果你需要自定义顺序，可通过覆盖GLOBAL组指定顺序
+3. 面板的节点组排序是根据GLOBAL组中的节点顺序排序的，在Mihomo中会是按配置文件的顺序，在sing-box中会把route.final放到第一位，其余按照配置文件顺序，如果你需要自定义顺序，可通过覆盖GLOBAL组指定顺序
 4. 面板支持PWA（Progressive Web App），可以在移动设备上通过"添加到主屏幕"获得类原生app的体验
-5. 面板的更新按钮和自动更新功能需要正确的配置核心的ui下载路径 ([mihomo](https://wiki.metacubex.one/config/general/#_9)), 否则可能会在点击更新后更新为核心默认面板
+5. 面板的更新按钮和自动更新功能需要正确的配置核心的ui下载路径 ([mihomo](https://wiki.metacubex.one/config/general/#_9) | [sing-box](https://sing-box.sagernet.org/configuration/experimental/clash-api/#external_ui_download_url)), 否则可能会在点击更新后更新为核心默认面板
 
 ## URL params format
 
@@ -101,5 +103,9 @@ http://host:port/#/setup?hostname=ipordomain&port=9090&secret=123456
 
 7. **`disableTunMode`**
    - Set '1' to hide tun switch
+
+8. **`type`**
+   - Selects the backend API: `clash` (Clash REST/WS) or `singbox` (sing-box native).
+   - Default: `clash`
 
 ### I code just for fun, not for money. If you really want to donate, please consider donating to [UNICEF](https://www.unicef.org/) to help hungry children.

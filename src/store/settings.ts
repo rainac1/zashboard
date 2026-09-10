@@ -9,6 +9,7 @@ import {
   FONTS,
   GEOIP_ASN_DATABASE_URL,
   GEOIP_COUNTRY_DATABASE_URL,
+  GLOBAL,
   IP_INFO_API,
   IS_APPLE_DEVICE,
   LANG,
@@ -361,6 +362,7 @@ export const minProxyCardWidth = useStorage<number>(
 export const manageHiddenGroup = useStorage('config/manage-hidden-group-mode', false)
 
 export const displayGlobalByMode = useStorage('config/display-global-by-mode', false)
+export const customGlobalNode = useStorage('config/custom-global-node-name', GLOBAL)
 
 export const proxyGroupIconSize = useStorage('config/proxy-group-icon-size', 24)
 export const proxyGroupIconMargin = useStorage('config/proxy-group-icon-margin', 6)

@@ -5,33 +5,52 @@ import { v4 as uuid } from 'uuid'
 import { computed, ref } from 'vue'
 import { sourceIPLabelList } from './settings'
 
-// 旧版本的后端结构:没有 `type` 字段;更早的版本还把 sing-box 作为附属通道
-// `singboxChannel` 挂在 clash 后端上,后来才拆成独立的 `type: 'singbox'` 条目。
-// sing-box 支持已移除,两种形态都直接丢弃。
-type LegacyBackend = Omit<Partial<Backend>, 'type'> & { type?: string; singboxChannel?: unknown }
+// 旧版本的后端结构:没有 `type` 字段,且 sing-box 以附属通道 `singboxChannel` 存在。
+type LegacySingboxChannel = {
+  protocol?: string
+  host?: string
+  port?: string
+  secret?: string
+}
+type LegacyBackend = Partial<Backend> & { singboxChannel?: LegacySingboxChannel }
 
-const isLegacyBackend = (item: LegacyBackend) =>
-  !item.type || 'singboxChannel' in item || item.type === 'singbox'
+// 一次性迁移:补全 `type`;把旧的 singboxChannel 拆分为独立的 sing-box 后端。
+const migrateBackendList = (list: LegacyBackend[]): Backend[] => {
+  const migrated: Backend[] = []
 
-// 一次性迁移:补全 `type`,丢掉 singboxChannel 附属通道与 sing-box 后端条目。
-const migrateBackendList = (list: LegacyBackend[]): Backend[] =>
-  list
-    .filter((item) => item.type !== 'singbox')
-    .map((item) => ({ ...(omit(item, 'singboxChannel') as Backend), type: 'clash' }))
+  for (const item of list) {
+    const channel = item.singboxChannel
+    const base = omit(item, 'singboxChannel') as Backend
+
+    migrated.push({
+      ...base,
+      type: base.type ?? 'clash',
+    })
+
+    if (channel?.host) {
+      migrated.push({
+        type: 'singbox',
+        protocol: channel.protocol || 'http',
+        host: channel.host,
+        port: channel.port || '9090',
+        secondaryPath: '',
+        password: channel.secret || '',
+        uuid: uuid(),
+        label: base.label ? `${base.label} (sing-box)` : undefined,
+      })
+    }
+  }
+
+  return migrated
+}
 
 export const backendList = useStorage<Backend[]>('setup/api-list', [])
 
-if ((backendList.value as LegacyBackend[]).some(isLegacyBackend)) {
+if (backendList.value.some((item) => !item.type || 'singboxChannel' in item)) {
   backendList.value = migrateBackendList(backendList.value as LegacyBackend[])
 }
 
 export const activeUuid = useStorage<string>('setup/active-uuid', '')
-
-// 被丢弃的 sing-box 后端可能正是当前激活项,留着会让整个面板对着一个不存在的
-// 后端空转。清掉 uuid 后 activeBackend 为空,路由守卫会把用户送回 Setup 页。
-if (activeUuid.value && !backendList.value.some((item) => item.uuid === activeUuid.value)) {
-  activeUuid.value = ''
-}
 export const activeBackend = computed(() =>
   backendList.value.find((backend) => backend.uuid === activeUuid.value),
 )

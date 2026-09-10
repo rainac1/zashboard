@@ -1,16 +1,19 @@
 // 组装层 · 版本与升级。
+// fetchVersionAPI 按通道选择 Clash /version 或 sing-box gRPC getVersion,
+// 并把结果统一成 { data: { version } } 形状。
 // 版本字符串是 core 轴(assembly/backend.ts)的唯一来源:这里探测完成后写入 core,
 // 后端切换的瞬间先重置为 'unknown',避免沿用上一个后端的结论。
 import { fetchClashVersion, restartCoreAPI, upgradeCoreAPI, upgradeUIAPI } from '@/api/clash'
 import HonkLogo from '@/assets/images/honk.svg'
 import MetacubexLogo from '@/assets/images/metacubex.jpg'
+import SingBoxLogo from '@/assets/images/sing-box.svg'
 import { MIHOMO, MIHOMO_CHANNEL } from '@/constant'
 import { getRequestErrorMessage } from '@/helper/requestError'
 import { autoUpgradeCore, autoUpgradeDashboard, checkUpgradeCore } from '@/store/settings'
 import { activeBackend } from '@/store/setup'
 import type { Backend } from '@/types'
 import { computed, nextTick, ref } from 'vue'
-import { can, core, Core, resetCore } from './backend'
+import { apiVersion, can, Channel, channel, core, Core, resetCore } from './backend'
 
 export const version = ref()
 export const isCoreUpdateAvailable = ref(false)
@@ -28,9 +31,14 @@ export type BackendProbe = {
 
 export const backendProbe = ref<BackendProbe | undefined>()
 
+// sing-box 内核启动时刻(ms epoch);0 表示未知 / 当前后端无此能力。
+// 仅 sing-box API(GetStartedAt)提供,Clash /version 无运行时长。
+export const startedAt = ref(0)
+
 // honk 的 /version 返回 "honk <semver>"(见 honk-core/src/clash_api.rs 的 version handler)。
 const detectCore = (versionString: string): Core => {
   if (!versionString) return Core.Unknown
+  if (versionString.includes('sing-box')) return Core.Singbox
   if (/\bhonk\b/i.test(versionString)) return Core.Honk
   return Core.Mihomo
 }
@@ -38,6 +46,8 @@ const detectCore = (versionString: string): Core => {
 // 内核品牌的展示信息(logo / 官网链接)。纯展示,不是能力门控,故允许 view 使用。
 export const coreBrand = computed(() => {
   switch (core.value) {
+    case Core.Singbox:
+      return { logo: SingBoxLogo, url: 'https://github.com/sagernet/sing-box' }
     case Core.Honk:
       return { logo: HonkLogo, url: 'https://github.com/Glassyiris/honk' }
     default:
@@ -64,7 +74,30 @@ export const mihomo = computed<[MIHOMO, string] | undefined>(() => {
   }
 })
 
-export const fetchVersionAPI = () => fetchClashVersion()
+const fetchSingboxVersion = async () => {
+  const { getSingboxClient } = await import('@/api/singbox/client')
+  const client = getSingboxClient()?.client
+  if (!client) return { data: { version: 'sing-box' } }
+  const v = await client.getVersion({})
+  apiVersion.value = v.apiVersion
+  const version = v.version.includes('sing-box') ? v.version : `sing-box ${v.version}`
+  return { data: { version } }
+}
+
+export const fetchVersionAPI = () =>
+  channel.value === Channel.Singbox ? fetchSingboxVersion() : fetchClashVersion()
+
+const fetchSingboxStartedAt = async (): Promise<number> => {
+  const { getSingboxClient } = await import('@/api/singbox/client')
+  const client = getSingboxClient()?.client
+  if (!client) return 0
+  try {
+    const res = await client.getStartedAt({})
+    return Number(res.startedAt)
+  } catch {
+    return 0
+  }
+}
 
 const probeBackend = async (backend: Backend) => {
   const startAt = Date.now()
@@ -95,6 +128,7 @@ const probeBackend = async (backend: Backend) => {
     latency: Date.now() - startAt,
     message: '',
   }
+  startedAt.value = can('startedAt') ? await fetchSingboxStartedAt() : 0
 
   if (!can('coreUpdateCheck') || !checkUpgradeCore.value || backend.disableUpgradeCore) return
 
@@ -123,6 +157,7 @@ export const probeActiveBackend = () => {
 
   resetCore()
   version.value = ''
+  startedAt.value = 0
   isCoreUpdateAvailable.value = false
   backendProbe.value = backend
     ? { uuid: backend.uuid, status: 'probing', latency: 0, message: '' }

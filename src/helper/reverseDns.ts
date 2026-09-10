@@ -1,3 +1,4 @@
+import { can } from '@/assembly/backend'
 import { queryDNSAPI } from '@/assembly/config'
 import { resolveClientHostname } from '@/store/settings'
 import { activeBackend } from '@/store/setup'
@@ -182,7 +183,7 @@ async function fetchHostname(ip: string): Promise<string | null> {
 }
 
 function lookup(ip: string): string | undefined {
-  if (!resolveClientHostname.value || !isResolvableIP(ip)) return undefined
+  if (!resolveClientHostname.value || !can('dnsQuery') || !isResolvableIP(ip)) return undefined
 
   const backendUuid = activeBackend.value?.uuid
   if (!backendUuid) return undefined

@@ -107,7 +107,7 @@ const handlerLatencyTest = async () => {
 
   isLatencyTesting.value = true
   try {
-    await proxyLatencyTest(props.name, getTestUrl(props.groupName))
+    await proxyLatencyTest(props.name, getTestUrl(props.groupName), undefined, props.groupName)
     isLatencyTesting.value = false
   } catch {
     isLatencyTesting.value = false

@@ -72,7 +72,8 @@ export const activeConnections = shallowRef<Connection[]>([])
 export const closedConnections = shallowRef<Connection[]>([])
 export const isPaused = ref(false)
 
-// 内核自启动的上/下行总量,随连接 WS 消息携带,在下方快照 watch 写入。
+// 内核自启动的上/下行总量。clash 随连接 WS 消息携带,在下方快照 watch 写入;
+// sing-box 的连接流不带总量,由 status 统计流经 store/overview 的 traffic watch 写入。
 export const downloadTotal = ref(0)
 export const uploadTotal = ref(0)
 
@@ -125,9 +126,11 @@ export const initConnections = () => {
   }
 }
 
-// 结束连接流并丢弃数据。两件事必须一起做:上一个后端的连接只要活过后端切换的
-// 那一帧,就会冒充新后端的数据留在表格里。所以清空要与切换同步发生,
-// 不能等新流建起来。
+// 结束连接流并丢弃数据。两件事必须一起做:展示层的字段访问器按「当前后端」路由
+// (assembly/connections 的 backend()),而 clash 与 sing-box 的连接原始形状不同。
+// 上一个后端的连接只要活过后端切换的那一帧,就会被新后端的访问器读取 —— 取到
+// undefined 后渲染函数直接抛错,表格的 vnode 树就此损坏,之后新后端的数据正常
+// 流入也不再重绘,只能刷新页面。所以清空要与切换同步发生,不能等新流建起来。
 export const stopConnections = () => {
   cancel?.()
   cancel = undefined
@@ -153,7 +156,7 @@ const sortKeyFunctionMap: Record<SORT_TYPE, (connection: Connection) => string |
   [SORT_TYPE.SOURCE_IP]: getConnectionSourceIP,
   [SORT_TYPE.TYPE]: getNetworkTypeFromConnection,
   [SORT_TYPE.CONNECT_TIME]: (connection) => {
-    // start 是 ISO 串
+    // clash 的 start 是 ISO 串,sing-box 已是数值时间戳
     const start = getConnectionStart(connection)
 
     if (typeof start === 'number') {
