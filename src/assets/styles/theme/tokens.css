@@ -11,6 +11,9 @@
   /* 后端在线的状态点：常驻在侧边栏和列表里，比 success 低一档饱和度才不抢视线 */
   --color-backend-online: oklch(0.68 0.07 165);
 
+  /* 中延迟的亮黄在白底上只有 1.6:1，浅色主题压暗到 4.3:1，深色主题保持原来的亮黄 */
+  --color-medium-latency: light-dark(oklch(75.029% 0.15351 92.666), rgb(255, 197, 4));
+
   /* 统一各主题的圆角令牌，让所有输入控件风格更现代 */
   --radius-field: 0.625rem;
   --radius-selector: 0.5rem;
@@ -20,7 +23,7 @@
 [data-theme='light-neutral'],
 [data-theme='dark-neutral'] {
   --color-low-latency: oklch(0.551 0.08 167);
-  --color-medium-latency: oklch(0.72 0.14 85);
+  --color-medium-latency: light-dark(oklch(66.233% 0.12404 81.495), oklch(0.72 0.14 85));
   --color-high-latency: oklch(0.56 0.17 22);
   --color-backend-online: oklch(0.62 0.045 167);
 }

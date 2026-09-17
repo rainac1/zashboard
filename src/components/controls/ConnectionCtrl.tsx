@@ -28,6 +28,7 @@ import {
   quickFilterEnabled,
   quickFilterRegex,
   renderConnections,
+  searchHiddenColumns,
 } from '@/store/connections'
 import { isConnectionCard } from '@/store/settings'
 import {
@@ -35,6 +36,7 @@ import {
   BarsArrowUpIcon,
   ChevronDownIcon,
   ChevronUpIcon,
+  FunnelIcon,
   LinkIcon,
   LinkSlashIcon,
   PauseIcon,
@@ -237,13 +239,33 @@ export default defineComponent({
         </>
       )
 
+      const searchScopeLabel = () =>
+        searchHiddenColumns.value ? t('searchHiddenColumns') : t('searchVisibleColumns')
       const searchInput = (
-        <TextInput
-          v-model={connectionFilter.value}
-          placeholder={`${t('search')} | Regex`}
-          clearable={true}
-          class={isLargeCtrlsBar.value ? 'w-32 max-w-80 flex-1' : 'join-item min-w-0 flex-1'}
-        />
+        <div class={['relative w-32 min-w-0 flex-1', isLargeCtrlsBar.value && 'max-w-80']}>
+          <button
+            class="btn btn-circle btn-ghost btn-xs absolute top-1/2 left-1 z-20 h-6 min-h-6 w-6 -translate-y-1/2 p-0"
+            aria-label={searchScopeLabel()}
+            aria-pressed={searchHiddenColumns.value}
+            onClick={() => {
+              searchHiddenColumns.value = !searchHiddenColumns.value
+              updateTip(searchScopeLabel())
+            }}
+            onMouseenter={(e) => showTip(e, searchScopeLabel())}
+          >
+            <FunnelIcon
+              class={`h-3.5 w-3.5 ${
+                searchHiddenColumns.value ? 'text-primary fill-primary/40' : 'opacity-50'
+              }`}
+            />
+          </button>
+          <TextInput
+            v-model={connectionFilter.value}
+            placeholder={`${t('search')} | Regex`}
+            clearable={true}
+            class={['w-full pl-7', !isLargeCtrlsBar.value && 'join-item']}
+          />
+        </div>
       )
 
       const buttons = (

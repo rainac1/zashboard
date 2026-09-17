@@ -157,10 +157,11 @@
             </div>
           </div>
           <TimeSeriesChart
+            class="h-40"
+            :title="$t('networkQuality')"
             :data="nqChartData"
             :label-formatter="formatBitrate"
             :tooltip-formatter="nqTooltipFormatter"
-            x-axis-mode="seconds"
             :window-seconds="nqWindowSec"
             :show-pause-button="false"
           />
@@ -380,9 +381,13 @@ const nqRunning = ref(false)
 const nqError = ref('')
 const nqProgress = ref<NetworkQualityTestProgress>()
 const nqFinished = computed(() => nqProgress.value?.isFinal ?? false)
-// 折线图历史点: [已用秒数, bps]
+// 折线图历史点: [墙钟毫秒, bps]。TimeSeriesChart 现在统一用时间轴,
+// 所以横轴取「测试开始的墙钟时刻 + 内核上报的已用毫秒」,既能直接进时间轴,
+// 又能用差值还原出已用秒数给 tooltip。
 const nqDownloadHistory = ref<[number, number][]>([])
 const nqUploadHistory = ref<[number, number][]>([])
+// 测试开始的墙钟时刻,用于把横轴毫秒还原成已用秒数
+const nqStartedAt = ref(0)
 // 图表时间窗,测试开始时按最长运行时间固定,避免测试中调整设置影响横轴
 const nqWindowSec = ref(21)
 let nqController: AbortController | null = null
@@ -401,7 +406,8 @@ const nqTooltipFormatter = (params: ChartTooltipParam[]) => {
   return params
     .filter((item) => !seen.has(item.seriesName) && seen.add(item.seriesName))
     .map((item) => {
-      const [seconds, bitrate] = getChartPointValue(item.data)
+      const [atMs, bitrate] = getChartPointValue(item.data)
+      const seconds = (atMs - nqStartedAt.value) / 1000
       return chartTooltipRow({
         color: item.color,
         label: item.seriesName,
@@ -426,6 +432,7 @@ const startNetworkQuality = async () => {
   nqUploadHistory.value = []
   // +1s 余量,收尾时略超 maxRuntime 的点也能完整落在窗口内
   nqWindowSec.value = nqMaxRuntime.value + 1
+  nqStartedAt.value = Date.now()
   nqController = new AbortController()
   try {
     for await (const update of c.client.startNetworkQualityTest(
@@ -440,15 +447,16 @@ const startNetworkQuality = async () => {
     )) {
       nqProgress.value = update
       if (update.phase !== 3) {
-        const elapsedSec = Number(update.elapsedMs) / 1000
+        // 内核上报的已用毫秒是权威值,叠到开始时刻上得到该点的墙钟毫秒
+        const atMs = nqStartedAt.value + Number(update.elapsedMs)
         nqDownloadHistory.value = appendPoint(
           nqDownloadHistory.value,
-          elapsedSec,
+          atMs,
           Number(update.downloadCapacity),
         )
         nqUploadHistory.value = appendPoint(
           nqUploadHistory.value,
-          elapsedSec,
+          atMs,
           Number(update.uploadCapacity),
         )
       }

@@ -10,6 +10,8 @@ import BackendManager from './components/settings/backend/BackendManager.vue'
 import UpdateConfigModal from './components/settings/backend/UpdateConfigModal.vue'
 import UpgradeCoreModal from './components/settings/backend/UpgradeCoreModal.vue'
 import { useAppearanceVars } from './composables/useAppearanceVars'
+import { useOverscrollLock } from './composables/useOverscrollLock'
+import { useThemeColor } from './composables/useThemeColor'
 import { showUpdateConfigModal, showUpgradeCoreModal } from './composables/backendActions'
 import ConfirmDialogHost from './components/common/ConfirmDialogHost.vue'
 import { useKeyboard } from './composables/keyboard'
@@ -23,8 +25,8 @@ import {
 } from './helper/autoImportSettings'
 import { backgroundImage } from './helper/indexeddb'
 import { initNotification } from './helper/notification'
-import { getBackendFromUrl, isPreferredDark } from './helper/utils'
-import { disablePullToRefresh, emoji, font, theme } from './store/settings'
+import { getBackendFromUrl } from './helper/utils'
+import { emoji, font, theme } from './store/settings'
 import { backendList, setActiveBackend } from './store/setup'
 import type { Backend } from './types'
 
@@ -57,92 +59,15 @@ const fontClassName = computed(() => {
   )
 })
 
-const setThemeColor = () => {
-  if (!app.value) return
+const { setThemeColor } = useThemeColor(app)
 
-  const themeColor = getComputedStyle(app.value!).getPropertyValue('background-color').trim()
-  const metaThemeColor = document.querySelector('meta[name="theme-color"]')
-  if (metaThemeColor) {
-    metaThemeColor.setAttribute('content', themeColor)
-  }
-}
+useOverscrollLock()
 
-watch(isPreferredDark, setThemeColor)
 watch(
   theme,
   () => {
     document.body.setAttribute('data-theme', theme.value)
     setThemeColor()
-  },
-  {
-    immediate: true,
-  },
-)
-
-// iOS bounces the whole page when a vertical drag has nowhere left to scroll:
-// either it's over a non-scrollable area (so the drag pans the layout viewport),
-// or it's inside a scroll container already at its top/bottom edge and the
-// leftover scroll chains up to the document. Classic iOS scroll-lock: find the
-// nearest vertically-scrollable ancestor and only let the drag through while
-// that element can still move in the drag direction; otherwise cancel it so
-// nothing reaches the page.
-let touchStartX = 0
-let touchStartY = 0
-
-const onTouchStart = (event: TouchEvent) => {
-  touchStartX = event.touches[0].clientX
-  touchStartY = event.touches[0].clientY
-}
-
-const findScrollableY = (target: EventTarget | null) => {
-  let el = target as HTMLElement | null
-  while (el && el !== document.body && el !== document.documentElement) {
-    const { overflowY } = getComputedStyle(el)
-    if ((overflowY === 'auto' || overflowY === 'scroll') && el.scrollHeight > el.clientHeight) {
-      return el
-    }
-    el = el.parentElement
-  }
-  return null
-}
-
-const onTouchMove = (event: TouchEvent) => {
-  if (event.touches.length > 1) return
-
-  const deltaX = event.touches[0].clientX - touchStartX
-  const deltaY = event.touches[0].clientY - touchStartY
-  // Leave horizontal gestures (e.g. swiping a horizontally-scrollable table) be.
-  if (Math.abs(deltaY) <= Math.abs(deltaX)) return
-
-  const el = findScrollableY(event.target)
-  if (!el) {
-    event.preventDefault()
-    return
-  }
-
-  const atTop = el.scrollTop <= 0
-  const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1
-  // deltaY > 0 means dragging downward (revealing content above).
-  if ((atTop && deltaY > 0) || (atBottom && deltaY < 0)) {
-    event.preventDefault()
-  }
-}
-
-watch(
-  disablePullToRefresh,
-  () => {
-    const body = document.body
-    if (disablePullToRefresh.value) {
-      body.style.overscrollBehavior = 'none'
-      body.style.overflow = 'hidden'
-      document.addEventListener('touchstart', onTouchStart, { passive: true })
-      document.addEventListener('touchmove', onTouchMove, { passive: false })
-    } else {
-      body.style.overscrollBehavior = ''
-      body.style.overflow = ''
-      document.removeEventListener('touchstart', onTouchStart)
-      document.removeEventListener('touchmove', onTouchMove)
-    }
   },
   {
     immediate: true,
@@ -177,8 +102,6 @@ const autoSwitchToURLBackendIfExists = () => {
 autoSwitchToURLBackendIfExists()
 
 onMounted(async () => {
-  setThemeColor()
-
   if (autoImportSettings.value) {
     await importSettingsFromUrl()
   }

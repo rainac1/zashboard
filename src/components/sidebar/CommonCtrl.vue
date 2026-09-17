@@ -2,9 +2,9 @@
   <div class="flex flex-col gap-2 p-2 text-sm">
     <SidebarStatistics />
     <BackendSwitch />
-    <div class="flex gap-2">
+    <div class="flex items-center gap-2">
       <SidebarButtons />
-      <BackendVersion />
+      <BackendVersion class="min-w-0 flex-1" />
     </div>
   </div>
 </template>

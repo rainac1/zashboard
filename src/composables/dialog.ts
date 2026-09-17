@@ -6,23 +6,38 @@ import { onUnmounted, ref, watch, type Ref } from 'vue'
 // boolean flag would be cleared by the inner one closing while the outer is up.
 export const openDialogCount = ref(0)
 
-export const useDialogOpenState = (isOpen: Ref<boolean | undefined>) => {
+// How many full-screen dimming overlays are up. Dialogs are the main source, but
+// not the only one (the mobile proxy group card dims the page the same way), and
+// App.vue has to darken the iOS PWA status bar to match — that strip is browser
+// chrome painted from <meta name="theme-color">, so no in-page overlay covers it.
+export const dimmedOverlayCount = ref(0)
+
+const useCount = (count: Ref<number>, active: Ref<boolean | undefined>) => {
   let held = false
 
   const acquire = () => {
     if (held) return
     held = true
-    openDialogCount.value++
+    count.value++
   }
 
   const release = () => {
     if (!held) return
     held = false
-    openDialogCount.value--
+    count.value--
   }
 
-  watch(isOpen, (val) => (val ? acquire() : release()), { immediate: true })
+  watch(active, (val) => (val ? acquire() : release()), { immediate: true })
   // A dialog can be unmounted by `v-if` while still open; hand the count back so
   // it never leaks and permanently disables page swiping.
   onUnmounted(release)
+}
+
+export const useDialogOpenState = (isOpen: Ref<boolean | undefined>) => {
+  useCount(openDialogCount, isOpen)
+  useCount(dimmedOverlayCount, isOpen)
+}
+
+export const useOverlayDimState = (isDimmed: Ref<boolean | undefined>) => {
+  useCount(dimmedOverlayCount, isDimmed)
 }

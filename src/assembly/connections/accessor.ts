@@ -149,19 +149,24 @@ export const createGetConnectionDisplayValue =
 
 export const createGetConnectionVisibleSearchValues = (accessor: ConnectionAccessor) => {
   // getDisplayValue 在工厂层建一次、keys 过滤结果按引用缓存 —— 二者原先都在
-  // 每条连接的每次调用里重建,每拍数千次纯浪费。
+  // 每条连接的每次调用里重建,每拍数千次纯浪费。展示列与「搜索隐藏列」的键全集会在
+  // 同一拍里交替传入,故按引用建表而非只记上一次。
   const getDisplayValue = createGetConnectionDisplayValue(accessor)
-  let lastKeys: CONNECTIONS_TABLE_ACCESSOR_KEY[] | null = null
-  let visibleKeys: CONNECTIONS_TABLE_ACCESSOR_KEY[] = []
+  const searchableKeysCache = new WeakMap<
+    CONNECTIONS_TABLE_ACCESSOR_KEY[],
+    CONNECTIONS_TABLE_ACCESSOR_KEY[]
+  >()
 
   return (
     connection: Connection,
     keys: CONNECTIONS_TABLE_ACCESSOR_KEY[],
     options: ConnectionDisplayOptions,
   ) => {
-    if (keys !== lastKeys) {
-      lastKeys = keys
+    let visibleKeys = searchableKeysCache.get(keys)
+
+    if (!visibleKeys) {
       visibleKeys = keys.filter((key) => key !== CONNECTIONS_TABLE_ACCESSOR_KEY.Close)
+      searchableKeysCache.set(keys, visibleKeys)
     }
 
     return visibleKeys.map((key) => getDisplayValue(connection, key, options))

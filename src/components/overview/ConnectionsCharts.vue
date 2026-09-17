@@ -1,5 +1,6 @@
 <template>
   <TimeSeriesChart
+    :title="$t('connections')"
     :data="chartsData"
     :label-formatter="labelFormatter"
     :tooltip-formatter="tooltipFormatter"
@@ -26,9 +27,7 @@ const chartsData = computed(() => {
   ]
 })
 
-const labelFormatter = (value: number) => {
-  return `       ${value}`
-}
+const labelFormatter = (value: number) => String(value)
 const tooltipFormatter = (value: ChartTooltipParam[]) => {
   return value.map((item) => formatTimeSeriesTooltipParam(item, String)).join('\n')
 }

@@ -1,5 +1,6 @@
 <template>
   <TimeSeriesChart
+    :title="$t('traffic')"
     :data="chartsData"
     :label-formatter="labelFormatter"
     :tooltip-formatter="tooltipFormatter"

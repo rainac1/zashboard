@@ -5,7 +5,7 @@
   >
     <!-- 玻璃挂在这一层：表格用撑高的空行虚拟，盒子高度就是虚拟总高（见 appearance.css） -->
     <div class="table-glass min-w-min">
-      <table :class="['table', sizeOfTable]">
+      <table :class="['table', sizeOfTable, tableClass]">
         <thead
           class="bg-base-100 border-base-300/60 sticky top-0 z-10 border-b backdrop-blur-none!"
         >
@@ -17,10 +17,14 @@
               v-for="header in headerGroup.headers"
               :key="header.id"
               :colSpan="header.colSpan"
-              :class="[inheritedStyle, header.column.getCanSort() && 'cursor-pointer select-none']"
+              :class="[
+                inheritedStyle,
+                header.column.columnDef.meta?.headerClass,
+                header.column.getCanSort() && 'cursor-pointer select-none',
+              ]"
               @click="header.column.getToggleSortingHandler()?.($event)"
             >
-              <div class="flex items-center gap-1 whitespace-nowrap">
+              <div class="inline-flex items-center gap-1 whitespace-nowrap">
                 <FlexRender
                   v-if="!header.isPlaceholder"
                   :render="header.column.columnDef.header"
@@ -63,7 +67,7 @@
               v-for="virtualRow in virtualRows"
               :key="virtualRow.key.toString()"
               :style="{ height: `${estimateSize}px` }"
-              class="hover:bg-primary/85! hover:text-primary-content!"
+              class="hover:bg-(--table-hover)!"
               :class="[
                 virtualRow.index % 2 === 0 && 'table-row-stripe',
                 rowClass?.(rows[virtualRow.index].original),
@@ -129,6 +133,7 @@ const props = withDefaults(
     overscan?: number
     columnVisibility?: VisibilityState
     rowClass?: (row: T) => string | undefined
+    tableClass?: string
   }>(),
   {
     estimateSize: 36,
@@ -207,7 +212,12 @@ const inheritedStyle = computed(() => {
   return `${baseStyle} backdrop-blur-sm`
 })
 
+// 单元格自带更完整的 tooltip 时,原生 title 和右键复制拿到的都只是排序用的原始值,反而是干扰
 const cellTitle = (cell: Cell<T, unknown>) => {
+  if (cell.column.columnDef.meta?.noCellTitle) {
+    return undefined
+  }
+
   const value = cell.getValue()
 
   return typeof value === 'string' || typeof value === 'number' ? String(value) : undefined

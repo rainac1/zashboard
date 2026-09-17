@@ -1,7 +1,8 @@
 <template>
+  <!-- isolate：把表内 sticky 表头的 z-30 关在自己的层叠上下文里，否则会盖住同为 z-30 的固定控制栏弹出的气泡。 -->
   <div
     ref="parentRef"
-    class="base-container m-3 h-full overflow-auto backdrop-blur-none!"
+    class="base-container isolate m-3 h-full overflow-auto backdrop-blur-none!"
     :class="{
       'select-none': isDragging,
     }"
@@ -140,7 +141,7 @@
             :style="{
               height: `${virtualRow.size}px`,
             }"
-            class="hover:bg-primary/85! hover:text-primary-content!"
+            class="hover:bg-(--table-hover)!"
             :class="[
               virtualRow.index % 2 === 0 && 'table-row-stripe',
               !isDragging ? 'cursor-pointer' : 'cursor-grabbing',

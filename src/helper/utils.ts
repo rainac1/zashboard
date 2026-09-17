@@ -19,6 +19,16 @@ export const prettyBytesHelper = (bytes: number, opts?: Options) => {
   })
 }
 
+// 速度每秒都在刷新,不足 1 kB 时继续按 kB 显示,避免 B/kB 单位来回切换让数值大幅跳动。
+export const prettySpeedHelper = (bytes: number, opts?: Options) => {
+  const value = Number.isFinite(bytes) ? bytes : 0
+  const maximumFractionDigits = opts?.maximumFractionDigits ?? 1
+
+  return value < 1000
+    ? `${(value / 1000).toFixed(maximumFractionDigits)} kB`
+    : prettyBytesHelper(value, { maximumFractionDigits, ...opts })
+}
+
 export const fromNow = (timestamp: string | number) => {
   return dayjs(timestamp).fromNow()
 }

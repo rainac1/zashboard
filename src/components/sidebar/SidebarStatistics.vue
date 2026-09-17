@@ -1,46 +1,27 @@
+<!--
+  展开态的统计：一块浅色底上摆 2×3 六个图块，标签小字在上、数值在下，
+  累计量各占一格。不画边框也不画分割线，分组全靠底色和留白。
+-->
 <template>
-  <div class="bg-base-150 grid w-full grid-cols-2 gap-x-2 gap-y-2.5 rounded-lg p-3">
+  <div class="bg-base-150 grid w-full grid-cols-2 gap-x-3 gap-y-4 rounded-[10px] px-3.5 py-4">
     <div
-      v-for="stat in statistics"
-      :key="stat.label"
-      class="flex flex-col items-start gap-0.5"
+      v-for="item in sidebarStatGrid"
+      :key="item.key"
+      class="flex min-w-0 flex-col gap-2"
     >
-      <div class="text-base-content/45 text-[11px] leading-tight">{{ $t(stat.label) }}</div>
-      <div class="text-base-content/80 text-sm leading-tight tabular-nums">{{ stat.value }}</div>
+      <span
+        class="text-base-content/60 min-w-0 truncate text-[11px] leading-none"
+        @mouseenter="checkTruncation"
+        >{{ $t(item.label) }}</span
+      >
+      <span class="text-base-content/85 truncate text-sm leading-none tabular-nums">
+        {{ item.value }}{{ item.unit ? ` ${item.unit}` : '' }}
+      </span>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { prettyBytesHelper } from '@/helper/utils'
-import { activeConnections, downloadTotal, uploadTotal } from '@/store/connections'
-import { downloadSpeed, memory, uploadSpeed } from '@/store/overview'
-import { computed } from 'vue'
-
-const statistics = computed(() => [
-  {
-    label: 'connections',
-    value: activeConnections.value.length,
-  },
-  {
-    label: 'memoryUsage',
-    value: prettyBytesHelper(memory.value, { binary: true }),
-  },
-  {
-    label: 'download',
-    value: prettyBytesHelper(downloadTotal.value),
-  },
-  {
-    label: 'dlSpeed',
-    value: `${prettyBytesHelper(downloadSpeed.value)}/s`,
-  },
-  {
-    label: 'upload',
-    value: prettyBytesHelper(uploadTotal.value),
-  },
-  {
-    label: 'ulSpeed',
-    value: `${prettyBytesHelper(uploadSpeed.value)}/s`,
-  },
-])
+import { sidebarStatGrid } from '@/composables/sidebarStats'
+import { checkTruncation } from '@/helper/tooltip'
 </script>

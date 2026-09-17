@@ -61,10 +61,13 @@ import {
   updateRuleProviderAPI,
 } from '@/assembly/rules'
 import {
+  EMPTY_CELL,
+  formatRuleHitCount,
   getRuleSize,
   isRuleDisabled,
   isUpdateableRuleSet,
   toggleRuleDisabledWithSideEffects,
+  useRuleHitTooltip,
 } from '@/composables/rules'
 import { RULE_TAB_TYPE } from '@/constant'
 import { notifyRequestError } from '@/helper/requestError'
@@ -78,6 +81,7 @@ import { computed, h, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
+const { showRuleHitTip } = useRuleHitTooltip()
 
 // 规则序号按配置顺序算一次,免得每行都去 rules 里 indexOf
 const ruleIndexMap = computed(() => {
@@ -88,11 +92,10 @@ const ruleIndexMap = computed(() => {
   return map
 })
 
-// 命中统计是部分内核才有的字段,没有就别占着两列空表头
+// 命中统计是部分内核才有的字段,没有就别占着一列空表头
 const hasRuleExtra = computed(() => rules.value.some((rule) => rule.extra))
 const ruleColumnVisibility = computed(() => ({
-  hitCount: hasRuleExtra.value,
-  missCount: hasRuleExtra.value,
+  hitMiss: hasRuleExtra.value,
 }))
 
 const updatingProviders = ref<string[]>([])
@@ -175,10 +178,10 @@ const ruleColumns: ColumnDef<Rule>[] = [
     cell: ({ row }) =>
       h(
         'span',
-        { class: 'text-base-content/50 tabular-nums' },
+        { class: 'tabular-nums opacity-50' },
         String(ruleIndexMap.value.get(row.original) ?? ''),
       ),
-    meta: { cellClass: 'w-12' },
+    meta: { cellClass: 'w-12 text-right', headerClass: 'text-right' },
   },
   {
     header: () => t('type'),
@@ -194,7 +197,7 @@ const ruleColumns: ColumnDef<Rule>[] = [
     cell: ({ row }) =>
       row.original.payload
         ? h(HighlightText, { text: row.original.payload, filter: rulesFilter.value })
-        : h('span', { class: 'text-base-content/40' }, '-'),
+        : h('span', { class: 'opacity-40' }, EMPTY_CELL),
   },
   {
     header: () => t('proxyGroup'),
@@ -218,32 +221,48 @@ const ruleColumns: ColumnDef<Rule>[] = [
 
       return typeof size === 'number' && size !== -1 ? size : ''
     },
-    cell: ({ getValue }) => h('span', { class: 'tabular-nums' }, String(getValue() ?? '')),
-    meta: { cellClass: 'w-24' },
+    cell: ({ getValue }) => {
+      const size = getValue<number | ''>()
+
+      return size === ''
+        ? h('span', { class: 'opacity-40' }, EMPTY_CELL)
+        : h('span', { class: 'tabular-nums' }, size.toLocaleString())
+    },
+    meta: { cellClass: 'w-24 text-right', headerClass: 'text-right' },
   },
+  // 命中与未命中并成一列:两个次数右对齐夹一个固定的斜杠,行与行之间才有一条对齐的轴;
+  // 四条统计(次数 + 最后发生时间)塞不进单元格,统一交给 hover 的 tooltip。
   {
-    header: () => t('hitCount'),
-    id: 'hitCount',
+    header: () => t('hitMissCount'),
+    id: 'hitMiss',
     accessorFn: (rule) => rule.extra?.hitCount ?? 0,
-    cell: ({ row }) =>
-      h('span', { class: 'tabular-nums' }, [
-        String(row.original.extra?.hitCount ?? 0),
-        row.original.extra?.hitAt
-          ? h(
-              'span',
-              { class: 'text-base-content/40 ml-1 text-xs' },
-              dayjs(row.original.extra.hitAt).format('MM-DD HH:mm'),
-            )
-          : null,
-      ]),
-    meta: { cellClass: 'w-40' },
-  },
-  {
-    header: () => t('missCount'),
-    id: 'missCount',
-    accessorFn: (rule) => rule.extra?.missCount ?? 0,
-    cell: ({ getValue }) => h('span', { class: 'tabular-nums' }, String(getValue() ?? 0)),
-    meta: { cellClass: 'w-24' },
+    cell: ({ row }) => {
+      const extra = row.original.extra
+
+      // 整组右对齐只对齐右边缘,斜杠会随位数左右漂;两侧各给一个等宽的 fr,
+      // 斜杠才真的钉在列中轴上,成为一条贯穿所有行的竖线。
+      return h(
+        'span',
+        {
+          class: 'grid grid-cols-[1fr_auto_1fr] items-baseline tabular-nums',
+          onMouseenter: (e: MouseEvent) => showRuleHitTip(e, row.original),
+        },
+        [
+          h(
+            'span',
+            { class: extra?.hitCount ? 'text-right' : 'text-right opacity-40' },
+            formatRuleHitCount(extra?.hitCount),
+          ),
+          h('span', { class: 'mx-1 opacity-30' }, '/'),
+          h(
+            'span',
+            { class: extra?.missCount ? 'text-left opacity-60' : 'text-left opacity-40' },
+            formatRuleHitCount(extra?.missCount),
+          ),
+        ],
+      )
+    },
+    meta: { cellClass: 'w-36', headerClass: 'text-center', noCellTitle: true },
   },
   {
     header: () => t('statusLabel'),
@@ -284,8 +303,8 @@ const providerColumns: ColumnDef<RuleProvider>[] = [
     id: 'index',
     accessorFn: (provider) => renderRulesProvider.value.indexOf(provider) + 1,
     cell: ({ getValue }) =>
-      h('span', { class: 'text-base-content/50 tabular-nums' }, String(getValue() ?? '')),
-    meta: { cellClass: 'w-12' },
+      h('span', { class: 'tabular-nums opacity-50' }, String(getValue() ?? '')),
+    meta: { cellClass: 'w-12 text-right', headerClass: 'text-right' },
   },
   {
     header: () => t('name'),
@@ -297,8 +316,9 @@ const providerColumns: ColumnDef<RuleProvider>[] = [
     header: () => t('ruleCount'),
     id: 'ruleCount',
     accessorFn: (provider) => provider.ruleCount,
-    cell: ({ getValue }) => h('span', { class: 'tabular-nums' }, String(getValue() ?? 0)),
-    meta: { cellClass: 'w-24' },
+    cell: ({ getValue }) =>
+      h('span', { class: 'tabular-nums' }, (getValue<number>() ?? 0).toLocaleString()),
+    meta: { cellClass: 'w-24 text-right', headerClass: 'text-right' },
   },
   {
     header: () => t('behavior'),

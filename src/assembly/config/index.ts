@@ -18,6 +18,7 @@ export const defaultConfig: Config = {
   ipv6: false,
   tun: {
     enable: false,
+    stack: '',
   },
 }
 

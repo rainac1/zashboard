@@ -7,22 +7,17 @@
     @click="handlerGroupClick"
   >
     <!--
-      压暗强度与 .modal 的遮罩一致（daisyUI 默认 40%），淡入淡出刻意和下面卡片
-      生长动画同时长同曲线（200ms ease-out），让两者读起来是一个动作而非两个。
+      压暗强度与 .modal 的遮罩一致（daisyUI 默认 40%），淡入淡出也和弹窗遮罩同一条；
+      卡片自己的展开比这个快半拍，两条曲线都在 utilities/motion.css。
     -->
-    <Transition
-      enter-active-class="transition-opacity duration-200 ease-out"
-      enter-from-class="opacity-0"
-      leave-active-class="transition-opacity duration-200 ease-out"
-      leave-to-class="opacity-0"
-    >
+    <Transition name="proxy-group-backdrop">
       <div
         v-if="modalMode"
         class="fixed inset-0 z-40 overflow-hidden bg-black/40"
       />
     </Transition>
     <div
-      class="base-container absolute flex flex-col gap-2 overflow-hidden p-2 transition-[width,transform,max-height] duration-200 ease-out will-change-transform"
+      class="base-container proxy-group-card absolute flex flex-col gap-2 overflow-hidden p-2 will-change-transform"
       :class="modalMode && blurIntensity < 5 && 'backdrop-blur-sm!'"
       :style="cardStyle"
       @contextmenu.prevent.stop="handlerLatencyTest"
@@ -39,7 +34,7 @@
 
       <div
         v-if="displayContent"
-        class="will-change-opacity max-h-108 overflow-y-auto overscroll-contain transition-opacity duration-200 ease-out"
+        class="proxy-group-card-content will-change-opacity max-h-108 overflow-y-auto overscroll-contain"
         :class="[PROXIES_PARENT_CLASS]"
         :style="{
           width: 'calc(100vw - 2.5rem)',
@@ -60,6 +55,7 @@
 
 <script setup lang="ts">
 import { useBounceOnVisible } from '@/composables/bouncein'
+import { useOverlayDimState } from '@/composables/dialog'
 import { disableProxiesPageScroll } from '@/composables/proxies'
 import { useRenderProxyList } from '@/composables/renderProxies'
 import { PROXIES_PARENT_CLASS } from '@/helper/utils'
@@ -83,6 +79,9 @@ const modalMode = ref(false)
 const displayContent = ref(false)
 const showAllContent = ref(modalMode.value)
 const contentOpacity = ref(0)
+
+// 压暗层要连 iOS PWA 的状态栏一起暗下去，见 App.vue 的 setThemeColor。
+useOverlayDimState(modalMode)
 
 const cardWrapperRef = ref()
 const cardRef = ref()

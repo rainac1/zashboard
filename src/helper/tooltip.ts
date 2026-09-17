@@ -1,5 +1,8 @@
 import tippy, { type Instance, type Props } from 'tippy.js'
 
+// Start touch detection before the first tooltip's synthetic mouse events.
+tippy([])
+
 let appContent: HTMLElement
 let tippyInstance: Instance | null = null
 let currentTarget: HTMLElement | null = null

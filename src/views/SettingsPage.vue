@@ -165,33 +165,13 @@
           @customize="customizationOpen = true"
         />
 
-        <nav
-          class="min-h-0 flex-1 space-y-1 overflow-y-auto"
+        <NavMenu
+          class="min-h-0 flex-1 overflow-y-auto"
+          :items="navItems"
+          :active-key="activeCategory?.key"
           :aria-label="$t('settingsCategory')"
-        >
-          <button
-            v-for="category in menuItems"
-            :key="category.key"
-            type="button"
-            class="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm transition-colors"
-            :class="
-              category.key === activeCategory?.key
-                ? 'bg-primary text-primary-content shadow-sm'
-                : 'hover:bg-base-100 text-base-content/65 hover:text-base-content'
-            "
-            :aria-current="category.key === activeCategory?.key ? 'page' : undefined"
-            @click="selectSection(category.key)"
-          >
-            <component
-              :is="category.icon"
-              class="h-5 w-5 shrink-0"
-            />
-            <span class="min-w-0 flex-1 truncate">
-              {{ $t(SETTINGS_MENU_LABELS[category.key]) }}
-            </span>
-            <ChevronRightIcon class="h-4 w-4 shrink-0 opacity-35" />
-          </button>
-        </nav>
+          @select="selectNavCategory"
+        />
 
         <div class="mt-3 flex gap-2">
           <button
@@ -274,6 +254,7 @@ import ProxiesSettings from '@/components/settings/proxies/ProxiesSettings.vue'
 import SettingsCustomizationDialog from '@/components/settings/SettingsCustomizationDialog.vue'
 import SettingsSearch from '@/components/settings/SettingsSearch.vue'
 import type { ReachabilityStatus } from '@/composables/backendReachability'
+import NavMenu, { type NavMenuItem } from '@/components/common/NavMenu.vue'
 import { usePaddingForViews } from '@/composables/paddingViews'
 import { settingsPaneTransition } from '@/composables/pageTransition'
 import { useSettingsSection, visibleSectionKeys } from '@/composables/settingsSection'
@@ -284,14 +265,9 @@ import { activeBackend, activeUuid } from '@/store/setup'
 import {
   AdjustmentsHorizontalIcon,
   ArrowPathIcon,
-  ArrowsRightLeftIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  CubeTransparentIcon,
-  GlobeAltIcon,
-  HomeIcon,
   MagnifyingGlassIcon,
-  ServerIcon,
 } from '@heroicons/vue/24/outline'
 import { useElementSize } from '@vueuse/core'
 import type { Component } from 'vue'
@@ -339,19 +315,16 @@ const clearPaneAnimation = () => {
   settingsPaneTransition.value = ''
 }
 
-const categoryPresentation: Record<SETTINGS_MENU_KEY, { icon: Component; component: Component }> = {
-  [SETTINGS_MENU_KEY.general]: { icon: HomeIcon, component: ZashboardSettings },
-  [SETTINGS_MENU_KEY.overview]: { icon: CubeTransparentIcon, component: OverviewSettings },
-  [SETTINGS_MENU_KEY.backend]: { icon: ServerIcon, component: BackendSettings },
-  [SETTINGS_MENU_KEY.proxies]: { icon: GlobeAltIcon, component: ProxiesSettings },
-  [SETTINGS_MENU_KEY.connections]: {
-    icon: ArrowsRightLeftIcon,
-    component: ConnectionsSettings,
-  },
+const categoryComponents: Record<SETTINGS_MENU_KEY, Component> = {
+  [SETTINGS_MENU_KEY.general]: ZashboardSettings,
+  [SETTINGS_MENU_KEY.overview]: OverviewSettings,
+  [SETTINGS_MENU_KEY.backend]: BackendSettings,
+  [SETTINGS_MENU_KEY.proxies]: ProxiesSettings,
+  [SETTINGS_MENU_KEY.connections]: ConnectionsSettings,
 }
 const allCategoryComponents: CategoryView[] = SETTINGS_CATEGORIES.map((category) => ({
   ...category,
-  ...categoryPresentation[category.key],
+  component: categoryComponents[category.key],
 }))
 
 const menuItems = computed(() => {
@@ -367,6 +340,13 @@ const activeCategory = computed(() => {
 })
 
 const showMobileIndex = computed(() => !showSideNavigation.value && !routeSection.value)
+const navItems = computed<NavMenuItem[]>(() =>
+  menuItems.value.map((category) => ({
+    key: category.key,
+    label: t(SETTINGS_MENU_LABELS[category.key]),
+    icon: category.icon,
+  })),
+)
 const categorySelectOptions = computed(() =>
   menuItems.value.map((item) => ({
     value: item.key,
@@ -395,6 +375,8 @@ const selectSection = async (key: SETTINGS_MENU_KEY, settingKey?: string) => {
   await enterSection(key, settingKey)
   if (!settingKey) scrollContainerRef.value?.scrollTo({ top: 0, behavior: 'smooth' })
 }
+
+const selectNavCategory = (key: string) => selectSection(key as SETTINGS_MENU_KEY)
 
 const backToCategories = async () => {
   mobileSearchOpen.value = false

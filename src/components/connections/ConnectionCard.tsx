@@ -16,11 +16,11 @@ import { connectionFilter, connectionTabShow, isClosedConnection } from '@/store
 import { connectionCardLines, proxyChainDirection, showFullProxyChain } from '@/store/settings'
 import type { Connection } from '@/types'
 import {
-  ArrowDownCircleIcon,
   ArrowDownIcon,
+  ArrowDownTrayIcon,
   ArrowRightCircleIcon,
-  ArrowUpCircleIcon,
   ArrowUpIcon,
+  ArrowUpTrayIcon,
   NoSymbolIcon,
   XMarkIcon,
 } from '@heroicons/vue/24/outline'
@@ -140,26 +140,26 @@ export default defineComponent<{
           </span>
         ),
         [CONNECTIONS_TABLE_ACCESSOR_KEY.Download]: () => (
-          <div class="mr-1 flex items-center gap-[1px] text-xs whitespace-nowrap">
-            <ArrowDownIcon class="text-success h-3 w-3 shrink-0" />
+          <div class="mr-1 flex items-center gap-1 text-xs whitespace-nowrap">
+            <ArrowDownTrayIcon class="text-success h-3.5 w-3.5 shrink-0" />
             {highlightedText(CONNECTIONS_TABLE_ACCESSOR_KEY.Download)}
           </div>
         ),
         [CONNECTIONS_TABLE_ACCESSOR_KEY.Upload]: () => (
-          <div class="mr-1 flex items-center gap-[1px] text-xs whitespace-nowrap">
-            <ArrowUpIcon class="text-info h-3 w-3 shrink-0" />
+          <div class="mr-1 flex items-center gap-1 text-xs whitespace-nowrap">
+            <ArrowUpTrayIcon class="text-info h-3.5 w-3.5 shrink-0" />
             {highlightedText(CONNECTIONS_TABLE_ACCESSOR_KEY.Upload)}
           </div>
         ),
         [CONNECTIONS_TABLE_ACCESSOR_KEY.DlSpeed]: () => (
-          <div class="mr-1 flex items-center gap-[1px] text-xs whitespace-nowrap">
-            <ArrowDownCircleIcon class="text-success h-4 w-4 shrink-0" />
+          <div class="mr-1 flex items-center gap-1 text-xs whitespace-nowrap">
+            <ArrowDownIcon class="text-success h-3 w-3 shrink-0 stroke-2" />
             {highlightedText(CONNECTIONS_TABLE_ACCESSOR_KEY.DlSpeed)}
           </div>
         ),
         [CONNECTIONS_TABLE_ACCESSOR_KEY.UlSpeed]: () => (
-          <div class="mr-1 flex items-center gap-[1px] text-xs whitespace-nowrap">
-            <ArrowUpCircleIcon class="text-info h-4 w-4 shrink-0" />
+          <div class="mr-1 flex items-center gap-1 text-xs whitespace-nowrap">
+            <ArrowUpIcon class="text-info h-3 w-3 shrink-0 stroke-2" />
             {highlightedText(CONNECTIONS_TABLE_ACCESSOR_KEY.UlSpeed)}
           </div>
         ),

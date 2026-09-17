@@ -90,6 +90,18 @@
           />
         </SettingItem>
         <SettingItem
+          :setting-key="k.tunStack"
+          :when="canShowTunStack"
+          class="settings-dependent-item"
+        >
+          <div class="setting-item-label">{{ $t('tunStack') }}</div>
+          <SelectInput
+            v-model="tunStack"
+            class="select select-sm min-w-24"
+            :options="tunStackOptions"
+          />
+        </SettingItem>
+        <SettingItem
           :setting-key="k.allowLan"
           :when="!!configs"
         >
@@ -150,6 +162,7 @@ import { can } from '@/assembly/backend'
 import { configs, updateConfigs } from '@/assembly/config'
 import { coreBrand, isCoreUpdateAvailable } from '@/assembly/version'
 import BackendVersion from '@/components/common/BackendVersion.vue'
+import SelectInput, { type SelectOption } from '@/components/common/SelectInput.vue'
 import BackendPortsGrid from '@/components/settings/backend/BackendPortsGrid.vue'
 import BackendSwitch from '@/components/settings/backend/BackendSwitch.vue'
 import DnsQuery from '@/components/settings/backend/DnsQuery.vue'
@@ -157,6 +170,7 @@ import SettingItem from '@/components/settings/SettingItem.vue'
 import { backendActions } from '@/composables/backendActions'
 import { isSettingVisible, useIsSettingVisible } from '@/composables/settings'
 import { BACKEND_ITEM_KEYS } from '@/config/settingsItems'
+import { TUN_STACK } from '@/constant'
 import { notifyRequestError } from '@/helper/requestError'
 import { autoUpgradeCore, checkUpgradeCore } from '@/store/settings'
 import { activeBackend } from '@/store/setup'
@@ -167,12 +181,18 @@ const k = BACKEND_ITEM_KEYS
 const isVisibleBackendSwitch = useIsSettingVisible(k.backend)
 const isVisiblePorts = useIsSettingVisible(k.ports)
 const isVisibleTunMode = useIsSettingVisible(k.tunMode)
+const isVisibleTunStack = useIsSettingVisible(k.tunStack)
 const isVisibleAllowLan = useIsSettingVisible(k.allowLan)
 const isVisibleCheckUpgrade = useIsSettingVisible(k.checkCoreUpgrade)
 const isVisibleAutoUpgrade = useIsSettingVisible(k.autoUpgradeCore)
 const isVisibleDnsQuery = useIsSettingVisible(k.DNSQuery)
 const canShowTunMode = computed(
   () => isVisibleTunMode.value && !activeBackend.value?.disableTunMode,
+)
+// 只有核心在 /configs 里回报了 stack 才展示，避免对不支持该字段的核心下发无效 PATCH。
+const canShowTunStack = computed(
+  () =>
+    !!configs.value?.tun?.stack && isVisibleTunStack.value && !activeBackend.value?.disableTunMode,
 )
 
 const hasVisibleActions = computed(() =>
@@ -185,6 +205,7 @@ const hasVisibleNetworkSettings = computed(
     !!configs.value &&
     (isVisiblePorts.value ||
       (!!configs.value.tun && canShowTunMode.value) ||
+      canShowTunStack.value ||
       isVisibleAllowLan.value),
 )
 const hasVisibleUpgradeSettings = computed(
@@ -212,6 +233,36 @@ const handlerCheckUpgradeCoreChange = () => {
 const hanlderTunModeChange = async () => {
   try {
     await updateConfigs({ tun: { enable: configs.value?.tun.enable } })
+  } catch (error) {
+    notifyRequestError(error)
+  }
+}
+const tunStackOptions = computed<SelectOption<string>[]>(() => {
+  const options: SelectOption<string>[] = Object.values(TUN_STACK).map((value) => ({
+    value,
+    label: value,
+  }))
+  const current = configs.value?.tun?.stack
+
+  // 核心可能返回列表外的写法（大小写不同或新增的 stack），保留原值避免显示为空。
+  if (current && !options.some((option) => option.value === current)) {
+    options.unshift({ value: current, label: current })
+  }
+
+  return options
+})
+const tunStack = computed<string>({
+  get: () => configs.value?.tun?.stack ?? '',
+  set: (stack) => {
+    if (!configs.value?.tun) return
+    configs.value.tun.stack = stack
+    handlerTunStackChange(stack)
+  },
+})
+// mihomo 的 PATCH /configs 里 tun.enable 不是指针，缺省会被当成 false，所以必须一起回传。
+const handlerTunStackChange = async (stack: string) => {
+  try {
+    await updateConfigs({ tun: { enable: configs.value?.tun.enable, stack } })
   } catch (error) {
     notifyRequestError(error)
   }

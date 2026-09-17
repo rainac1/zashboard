@@ -27,7 +27,6 @@
     .input,
     .select,
     .toggle,
-    .tabs,
     .base-container,
     .settings-grid,
     .floating-menu-panel,
@@ -81,7 +80,7 @@
     );
   }
 
-  .bg-primary:not(.tab.tab-active) {
+  .bg-primary {
     background-color: color-mix(
       in oklab,
       var(--color-primary) max(var(--app-surface-alpha), 60%),

@@ -56,42 +56,30 @@
   animation: highlightFlash 0.6s ease-out 2;
 }
 
-/* ---------- 侧栏 / 分段控件的滑动指示器 ---------- */
+/* ---------- 侧栏菜单 / 分段 Tabs 的滑动指示器 ---------- */
 
-.sidebar-tab-indicator {
-  border-radius: var(--radius-field);
+.nav-indicator {
   transform-origin: center;
   will-change: transform, width, height;
 }
 
-.sidebar-tab-indicator-ready {
+.nav-indicator-ready {
   transition:
-    transform 0.55s cubic-bezier(0.22, 1.5, 0.36, 1),
+    transform 0.24s cubic-bezier(0.32, 0.72, 0, 1),
     width 0.32s cubic-bezier(0.32, 0.72, 0, 1),
     height 0.32s cubic-bezier(0.32, 0.72, 0, 1),
     opacity 0.15s ease-out;
 }
 
-.sidebar-tab-active {
-  color: var(--color-neutral-content);
-  transition: color 0.18s ease-out;
-}
-
-.segment-indicator {
-  will-change: transform, width;
-}
-
-.segment-indicator-ready {
+.nav-item {
   transition:
-    transform 0.4s cubic-bezier(0.32, 0.72, 0, 1),
-    width 0.4s cubic-bezier(0.32, 0.72, 0, 1),
-    opacity 0.15s ease-out;
+    color 0.15s ease-out,
+    background-color 0.15s ease-out;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sidebar-tab-indicator-ready,
-  .sidebar-tab-active,
-  .segment-indicator-ready {
+  .nav-indicator-ready,
+  .nav-item {
     transition: none;
   }
 }
@@ -164,6 +152,45 @@
   :root {
     --collapse-motion-duration: 0s;
   }
+}
+
+/* ---------- 代理组卡片（移动端） ---------- */
+
+/*
+ * 遮罩跟弹窗对齐：和 DialogWrapper 的遮罩用同一条过渡（0.25s + CSS 关键字 ease-out，
+ * 即 cubic-bezier(0, 0, 0.58, 1)），压暗读起来才是同一种动作。
+ *
+ * 卡片生长和内容渐显不跟：那是这张卡自己的展开，要比遮罩利落，沿用原本的 0.2s +
+ * Tailwind 的 ease-out —— cubic-bezier(0, 0, 0.2, 1) 前段冲得快，换成上面那条会明显拖。
+ *
+ * reduced-motion 下刻意不降级：一来要跟 DialogWrapper 的遮罩保持一致（那边也只降级了
+ * .modal-box 的位移），二来卡片的展开/收起靠 width 的 transitionend 交接
+ * （见 ProxyGroupForMobile 的 handlerTransitionEnd），过渡取消掉事件就不再触发。
+ */
+:root {
+  --proxy-group-backdrop-motion: 0.25s ease-out;
+  --proxy-group-card-motion: 0.2s cubic-bezier(0, 0, 0.2, 1);
+}
+
+.proxy-group-backdrop-enter-active,
+.proxy-group-backdrop-leave-active {
+  transition: opacity var(--proxy-group-backdrop-motion);
+}
+
+.proxy-group-backdrop-enter-from,
+.proxy-group-backdrop-leave-to {
+  opacity: 0;
+}
+
+.proxy-group-card {
+  transition:
+    width var(--proxy-group-card-motion),
+    transform var(--proxy-group-card-motion),
+    max-height var(--proxy-group-card-motion);
+}
+
+.proxy-group-card-content {
+  transition: opacity var(--proxy-group-card-motion);
 }
 
 /* ---------- 代理节点网格 ---------- */

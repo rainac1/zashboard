@@ -98,7 +98,7 @@ const latencyTipAnimationClass = computed(() =>
  */
 const cardClass = computed(() => [
   'relative flex cursor-pointer flex-col items-start rounded-md hover:shadow-sm',
-  props.active ? 'bg-primary/85 sm:hover:bg-primary/95' : 'bg-base-200 sm:hover:bg-base-300/50',
+  props.active ? 'bg-primary/95 sm:hover:bg-primary' : 'bg-base-200 sm:hover:bg-base-300/50',
   isSmallCard.value ? 'gap-1 p-1' : 'gap-2 p-2',
   latencyTipAnimationClass.value,
 ])

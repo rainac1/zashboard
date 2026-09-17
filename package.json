@@ -1,6 +1,6 @@
 {
   "name": "zashboard",
-  "version": "3.26.0",
+  "version": "3.28.0",
   "description": "A Dashboard Using Clash API",
   "license": "MIT",
   "type": "module",
@@ -13,7 +13,8 @@
     "build:pingfang-only": "FONT=pingfang vite build",
     "build:sarasa-only": "FONT=sarasa vite build",
     "dev": "vite",
-    "format": "prettier --write src/ test/",
+    "format": "prettier --write scripts/ src/ test/",
+    "gen:icon": "node scripts/gen-icon.mjs",
     "generate": "buf generate",
     "lint": "eslint . --fix",
     "prepare": "husky",

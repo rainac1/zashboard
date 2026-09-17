@@ -1,23 +1,51 @@
+<!--
+  侧边栏里的趋势图。一行一个指标：标题和图例在头部,走势在下面,
+  高度由外层的 .sidebar-chart-row 决定。
+
+  图例自己画,不用 echarts 的 legend —— 它画在图的底部,和暂停按钮抢同一块地方,
+  还得为它留出一条 bottom 边距。挪到头部之后那块地方全给了走势。
+  只有一条线时不出图例:名字和左边的标题是同一个,再写一遍是噪声。
+-->
 <template>
   <div
-    class="relative w-full overflow-hidden"
-    :class="xAxisMode === 'seconds' ? 'h-36' : 'h-28'"
+    class="flex flex-col overflow-hidden"
     data-page-swipe-ignore
   >
+    <div class="sidebar-chart-head">
+      <span class="sidebar-chart-title">{{ title }}</span>
+      <span
+        v-if="legend.length"
+        class="sidebar-chart-legend"
+      >
+        <span
+          v-for="item in legend"
+          :key="item.name"
+          class="sidebar-chart-legend-item"
+        >
+          <span
+            class="sidebar-chart-legend-dot"
+            :style="{ backgroundColor: item.color }"
+          />
+          {{ item.name }}
+        </span>
+      </span>
+      <button
+        v-if="showPauseButton"
+        class="sidebar-chart-pause"
+        :aria-pressed="isPaused"
+        :aria-label="title"
+        @click="isPaused = !isPaused"
+      >
+        <component
+          :is="isPaused ? PlayCircleIcon : PauseCircleIcon"
+          class="size-3.5"
+        />
+      </button>
+    </div>
     <div
       ref="chartRef"
-      class="h-full w-full"
+      class="min-h-0 w-full flex-1"
     />
-    <button
-      v-if="showPauseButton"
-      class="btn btn-ghost btn-xs absolute right-1 bottom-0"
-      @click="isPaused = !isPaused"
-    >
-      <component
-        :is="isPaused ? PlayCircleIcon : PauseCircleIcon"
-        class="h-4 w-4"
-      />
-    </button>
   </div>
 </template>
 
@@ -30,16 +58,15 @@ import { getChartPointValue } from './chartTypes'
 
 const props = withDefaults(
   defineProps<{
+    title: string
     data: ChartSeries[]
     labelFormatter: (value: number) => string
     tooltipFormatter: (value: ChartTooltipParam[]) => string
     yAxisFloor?: number
-    xAxisMode?: 'time' | 'seconds'
     windowSeconds?: number
     showPauseButton?: boolean
   }>(),
   {
-    xAxisMode: 'time',
     windowSeconds: 20,
     showPauseButton: true,
   },
@@ -49,26 +76,27 @@ const chartRef = ref<HTMLElement>()
 const isPaused = ref(false)
 const { colors, fontFamily } = useChartTheme(chartRef)
 
+// 最后一条是主角,用主色;其余用次色。图例的点要和线条同色,所以这条规则得共用。
+const colorOf = (index: number) =>
+  index === props.data.length - 1
+    ? { line: colors.seriesPrimary, area: colors.seriesPrimaryMuted }
+    : { line: colors.seriesSecondary, area: colors.seriesSecondaryMuted }
+
+const legend = computed(() =>
+  props.data.length > 1
+    ? props.data.map((item, index) => ({ name: item.name, color: colorOf(index).line }))
+    : [],
+)
+
 const options = computed<EChartOption>(() => {
-  const isSeconds = props.xAxisMode === 'seconds'
   const lastPoint = props.data[0]?.data.at(-1)
-  const latest = lastPoint ? getChartPointValue(lastPoint)[0] : isSeconds ? 0 : Date.now()
+  const latest = lastPoint ? getChartPointValue(lastPoint)[0] : Date.now()
 
   return {
     animationDurationUpdate: 1000,
     animationEasingUpdate: 'linear',
-    legend: {
-      bottom: 0,
-      data: props.data.map((item) => item.name),
-      textStyle: {
-        color: colors.text,
-        fontFamily: fontFamily.value,
-        fontSize: 10,
-      },
-    },
-    grid: isSeconds
-      ? { left: 8, top: 15, right: 8, bottom: 40, containLabel: true }
-      : { left: 50, top: 15, right: 8, bottom: 25 },
+    // 头部已经占掉了标题的位置,四周只留够刻度文字的量,让走势铺满剩下的地方。
+    grid: { left: 42, top: 12, right: 10, bottom: 8 },
     tooltip: {
       show: true,
       trigger: 'axis',
@@ -84,34 +112,19 @@ const options = computed<EChartOption>(() => {
       },
       formatter: props.tooltipFormatter,
     },
-    xAxis: isSeconds
-      ? {
-          type: 'value',
-          min: latest - props.windowSeconds,
-          max: latest,
-          axisLine: { show: false },
-          axisTick: { show: false },
-          splitLine: { show: false },
-          axisLabel: {
-            show: true,
-            color: colors.text,
-            fontFamily: fontFamily.value,
-            fontSize: 10,
-            formatter: (value: number) => (value < 0 ? '' : `${Math.round(value)} s`),
-          },
-        }
-      : {
-          type: 'time',
-          min: latest - (props.windowSeconds - 1) * 1000,
-          max: latest - 1000,
-          axisLine: { show: false },
-          axisTick: { show: false },
-          splitLine: { show: false },
-          axisLabel: { show: false },
-        },
+    xAxis: {
+      type: 'time',
+      min: latest - (props.windowSeconds - 1) * 1000,
+      max: latest - 1000,
+      axisLine: { show: false },
+      axisTick: { show: false },
+      splitLine: { show: false },
+      axisLabel: { show: false },
+    },
     yAxis: {
       type: 'value',
-      splitNumber: 4,
+      // 只切三段:侧边栏这点高度里,再多几条线和几个数字就只剩噪声了。
+      splitNumber: 3,
       min: 0,
       max:
         props.yAxisFloor === undefined
@@ -127,18 +140,18 @@ const options = computed<EChartOption>(() => {
         },
       },
       axisLabel: {
+        // 底部那个 0 是废话,藏掉;其余刻度右对齐贴着轴,左边留一条窄槽就够。
+        showMinLabel: false,
+        align: 'right',
+        margin: 8,
         formatter: props.labelFormatter,
-        color: colors.text,
+        color: colors.textMuted,
         fontFamily: fontFamily.value,
-        fontSize: 10,
-        ...(isSeconds ? {} : { align: 'left', padding: [0, 0, 0, -35] }),
+        fontSize: 9,
       },
     },
     series: props.data.map((item, index) => {
-      const lineColor =
-        index === props.data.length - 1 ? colors.seriesPrimary : colors.seriesSecondary
-      const areaColor =
-        index === props.data.length - 1 ? colors.seriesPrimaryMuted : colors.seriesSecondaryMuted
+      const { line: lineColor, area: areaColor } = colorOf(index)
 
       return {
         name: item.name,

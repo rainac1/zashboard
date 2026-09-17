@@ -4,6 +4,7 @@ import {
   getConnectionVisibleSearchValues,
 } from '@/assembly/connections'
 import {
+  CONNECTION_SEARCHABLE_KEYS,
   CONNECTION_TAB_TYPE,
   SORT_DIRECTION,
   SORT_TYPE,
@@ -64,6 +65,8 @@ if (
 export const quickFilterRegex = useStorage<string>('config/quick-filter-regex', 'direct|dns-out')
 export const quickFilterEnabled = useStorage<boolean>('config/quick-filter-enabled', false)
 export const connectionFilter = ref('')
+// 搜索默认只看得见什么就搜什么，打开后连未展示的列一起搜。
+export const searchHiddenColumns = useStorage<boolean>('config/search-hidden-columns', false)
 export const sourceIPFilter = ref<string[] | null>(null)
 
 // 每拍整体换引用、元素不可变的管道:深 ref 会为每拍数千个一次性对象建 Proxy 与依赖记录,
@@ -201,6 +204,8 @@ const filterConnections = (items: readonly Connection[]) => {
   const visibleKeys = isConnectionCard.value
     ? connectionCardLines.value.flat()
     : connectionTableColumns.value
+  // 「隐藏连接」正则始终按全部字段判定，不受搜索范围开关影响。
+  const searchKeys = searchHiddenColumns.value ? CONNECTION_SEARCHABLE_KEYS : visibleKeys
 
   return items.filter((conn) => {
     if (sourceIPs !== null && sourceIPs.every((i) => i !== getConnectionSourceIP(conn))) {
@@ -211,14 +216,20 @@ const filterConnections = (items: readonly Connection[]) => {
       return true
     }
 
-    const visibleValues = getConnectionVisibleSearchValues(conn, visibleKeys, displayOptions)
+    const allValues = hideRegex
+      ? getConnectionVisibleSearchValues(conn, CONNECTION_SEARCHABLE_KEYS, displayOptions)
+      : null
 
-    if (hideRegex?.testAny(visibleValues)) {
+    if (allValues && hideRegex?.testAny(allValues)) {
       return false
     }
 
     if (searchRegex) {
-      return searchRegex.testAny(visibleValues)
+      return searchRegex.testAny(
+        searchKeys === CONNECTION_SEARCHABLE_KEYS && allValues
+          ? allValues
+          : getConnectionVisibleSearchValues(conn, searchKeys, displayOptions),
+      )
     }
 
     return true

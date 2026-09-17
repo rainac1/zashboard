@@ -1,5 +1,6 @@
 <template>
   <TimeSeriesChart
+    :title="$t('memoryUsage')"
     :data="chartsData"
     :label-formatter="labelFormatter"
     :tooltip-formatter="tooltipFormatter"

@@ -139,6 +139,17 @@ export const createMockServer = async ({
   const control = { stableLatency: false, latencyDelayMs: 0, latencyValue: 999 }
   let fetchCount = 0
 
+  const configs = {
+    port: 7890,
+    'socks-port': 7891,
+    'mixed-port': 7890,
+    mode: 'rule',
+    'log-level': 'info',
+    'allow-lan': false,
+    tun: { enable: false, stack: 'gVisor' },
+    'mode-list': ['rule', 'global', 'direct'],
+  }
+
   const rollLatencies = () => {
     if (control.stableLatency) return
 
@@ -187,16 +198,14 @@ export const createMockServer = async ({
 
     if (pathname === '/version') return json(res, { version: 'v1.19.0', meta: true })
     if (pathname === '/configs') {
-      return json(res, {
-        port: 7890,
-        'socks-port': 7891,
-        'mixed-port': 7890,
-        mode: 'rule',
-        'log-level': 'info',
-        'allow-lan': false,
-        tun: { enable: false },
-        'mode-list': ['rule', 'global', 'direct'],
-      })
+      // 跟 mihomo 的 PATCH 一样:没送到的字段保持原样,tun 里的子字段也是
+      if (req.method === 'PATCH') {
+        const patch = await readBody(req)
+
+        Object.assign(configs, patch, patch.tun ? { tun: { ...configs.tun, ...patch.tun } } : {})
+      }
+
+      return json(res, configs)
     }
     if (pathname === '/proxies') {
       rollLatencies()
