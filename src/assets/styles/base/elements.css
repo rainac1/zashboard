@@ -1,16 +1,7 @@
-/*
- * 元素级与全局的基础样式。
- * 这里只放不依赖具体组件的通用规则；跟某个组件绑定的样式请放 components/。
- */
-
 div {
   @apply scrollbar-thin;
 }
 
 .text-main {
   @apply text-base-content;
-}
-
-.search-highlight {
-  @apply rounded-xs bg-yellow-300 text-black;
 }

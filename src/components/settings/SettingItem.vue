@@ -11,16 +11,14 @@
 </template>
 
 <script setup lang="ts">
-import { registerRenderedSetting, useIsSettingVisible } from '@/composables/settings'
+import { useIsSettingVisible } from '@/composables/use-setting-visibility'
+import { registerRenderedSetting } from '@/helper/settings'
 import { computed, onUnmounted, toRef, watch } from 'vue'
 
 const props = withDefaults(
   defineProps<{
-    /** 该设置项在显隐配置中的 key */
     settingKey: string
-    /** 额外的前置条件，为 false 时该项始终不渲染（如依赖于其他开关） */
     when?: boolean
-    /** 同一个显隐 key 对应多行时，用独立锚点精确定位，不改变原有显隐语义。 */
     anchorKey?: string
   }>(),
   { when: true },

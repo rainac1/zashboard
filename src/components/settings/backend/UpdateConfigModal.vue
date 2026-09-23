@@ -1,8 +1,4 @@
 <template>
-  <!--
-    DialogWrapper 会 teleport 到 #app-content,而那正是挂载本组件的 App 根节点 ——
-    首帧它还没进 DOM。等挂载完再渲染,与同处 App 根下的 BackendManager 一致。
-  -->
   <DialogWrapper
     v-if="isReady"
     v-model="modalValue"
@@ -58,9 +54,9 @@
 </template>
 
 <script setup lang="ts">
-import { updateConfigsAPI } from '@/assembly/config'
+import { loadConfigs } from '@/assembly/config'
 import { notifyActionPending, showNotification } from '@/helper/notification'
-import { notifyRequestError } from '@/helper/requestError'
+import { notifyRequestError } from '@/helper/request-error'
 import { fetchConfigs } from '@/assembly/config'
 import { fetchProxies } from '@/assembly/proxies'
 import { fetchRules } from '@/assembly/rules'
@@ -88,13 +84,9 @@ const reloadAll = () => {
 const handleUpdateConfigs = async () => {
   if (isUpdating.value) return
   isUpdating.value = true
-  // 弹窗点完就关,按钮上的转圈跟着一起消失 —— 得留一条提示说明动作还在跑。
   const notifyKey = notifyActionPending('updateConfigs')
   try {
-    await updateConfigsAPI(
-      { path: configPath.value, payload: configPayload.value },
-      forceUpdate.value,
-    )
+    await loadConfigs({ path: configPath.value, payload: configPayload.value }, forceUpdate.value)
     reloadAll()
     modalValue.value = false
     showNotification({

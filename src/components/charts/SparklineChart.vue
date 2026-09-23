@@ -11,10 +11,10 @@
 </template>
 
 <script setup lang="ts">
-import { echarts, useChartTheme, useEChart, type EChartOption } from '@/composables/useEChart'
+import { echarts, useChartTheme, useEChart, type EChartOption } from '@/composables/use-echart'
 import { computed, ref } from 'vue'
-import type { ChartPoint, ChartTooltipParam } from './chartTypes'
-import { getChartPointValue } from './chartTypes'
+import type { ChartPoint, ChartTooltipParam } from './chart-types'
+import { getChartPointValue } from './chart-types'
 
 const props = withDefaults(
   defineProps<{

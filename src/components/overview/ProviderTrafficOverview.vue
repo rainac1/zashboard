@@ -11,7 +11,6 @@
           : 'grid-template-columns: 1fr;'
       "
     >
-      <!-- Total Traffic -->
       <div
         class="bg-base-200/30 flex flex-col gap-3 rounded-xl p-4"
         v-if="hasMultipleProvidersWithTraffic"
@@ -39,7 +38,6 @@
         </div>
       </div>
 
-      <!-- Per-provider Traffic -->
       <div
         v-for="provider in providersWithTraffic"
         :key="provider.name"
@@ -120,7 +118,6 @@ const hasMultipleProvidersWithTraffic = computed(() => {
   return providersWithTraffic.value.length > 1
 })
 
-// Total traffic
 const totalTraffic = computed(() => {
   const total = providersWithTraffic.value.reduce(
     (acc, provider) => ({

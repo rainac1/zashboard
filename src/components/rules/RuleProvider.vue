@@ -45,12 +45,13 @@
 </template>
 
 <script setup lang="ts">
-import { updateRuleProviderAPI } from '@/assembly/rules'
+import { rulesFilter } from '@/store/rules'
+import { updateRuleProvider } from '@/assembly/rules'
 import HighlightText from '@/components/common/HighlightText.vue'
-import { useBounceOnVisible } from '@/composables/bouncein'
-import { notifyRequestError } from '@/helper/requestError'
+import { useBounceOnVisible } from '@/composables/use-bounce-on-visible'
+import { notifyRequestError } from '@/helper/request-error'
 import { fromNow } from '@/helper/utils'
-import { fetchRules, rulesFilter } from '@/assembly/rules'
+import { fetchRules } from '@/assembly/rules'
 import type { RuleProvider } from '@/types'
 import { ArrowPathIcon } from '@heroicons/vue/24/outline'
 import { twMerge } from 'tailwind-merge'
@@ -66,7 +67,7 @@ const updateRuleProviderClickHandler = async () => {
 
   isUpdating.value = true
   try {
-    await updateRuleProviderAPI(props.ruleProvider.name)
+    await updateRuleProvider(props.ruleProvider.name)
     await fetchRules()
   } catch (e) {
     notifyRequestError(e)

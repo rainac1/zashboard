@@ -18,10 +18,6 @@ import DOMPurify from 'dompurify'
 
 const DOM_STARTS_WITH = 'data:image/svg+xml,'
 
-/*
- * 同一个图标在一页里会重复出现几十次(整组节点常常共用一个),而 sanitize 是要解析一遍
- * DOM 的。按原始字符串缓存,展开一个大组时只在第一张卡片上真跑一次。
- */
 const sanitizedCache = new Map<string, string>()
 
 const sanitizeIcon = (icon: string) => {

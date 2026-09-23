@@ -1,4 +1,4 @@
-import { useStorage } from '@/helper/storage'
+import { useStorage } from '@/composables/use-storage'
 
 export interface TerminalConfig {
   lightThemeName: string

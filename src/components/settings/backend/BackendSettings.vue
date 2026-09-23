@@ -143,14 +143,26 @@
       </div>
     </template>
 
-    <template v-if="showDnsQuery">
+    <template v-if="showDaeRuntime">
+      <div class="settings-section-label">{{ $t('daeRuntime') }}</div>
+      <div class="settings-grid">
+        <SettingItem
+          :setting-key="k.daeRuntime"
+          class="py-3"
+        >
+          <DaeRuntimePanel />
+        </SettingItem>
+      </div>
+    </template>
+
+    <template v-if="showDnsDiagnostics">
       <div class="settings-section-label">{{ $t('settingsSectionDiagnostics') }}</div>
       <div class="settings-grid">
         <SettingItem
           :setting-key="k.DNSQuery"
           class="py-3"
         >
-          <DnsQuery />
+          <DnsDiagnostics />
         </SettingItem>
       </div>
     </template>
@@ -165,13 +177,15 @@ import BackendVersion from '@/components/common/BackendVersion.vue'
 import SelectInput, { type SelectOption } from '@/components/common/SelectInput.vue'
 import BackendPortsGrid from '@/components/settings/backend/BackendPortsGrid.vue'
 import BackendSwitch from '@/components/settings/backend/BackendSwitch.vue'
-import DnsQuery from '@/components/settings/backend/DnsQuery.vue'
+import DaeRuntimePanel from '@/components/dae/DaeRuntimePanel.vue'
+import DnsDiagnostics from '@/components/settings/backend/DnsDiagnostics.vue'
 import SettingItem from '@/components/settings/SettingItem.vue'
-import { backendActions } from '@/composables/backendActions'
-import { isSettingVisible, useIsSettingVisible } from '@/composables/settings'
-import { BACKEND_ITEM_KEYS } from '@/config/settingsItems'
+import { backendActions } from '@/helper/backend-actions'
+import { useIsSettingVisible } from '@/composables/use-setting-visibility'
+import { isSettingVisible } from '@/helper/settings'
+import { BACKEND_ITEM_KEYS } from '@/config/settings-items'
 import { TUN_STACK } from '@/constant'
-import { notifyRequestError } from '@/helper/requestError'
+import { notifyRequestError } from '@/helper/request-error'
 import { autoUpgradeCore, checkUpgradeCore } from '@/store/settings'
 import { activeBackend } from '@/store/setup'
 import { computed } from 'vue'
@@ -186,10 +200,10 @@ const isVisibleAllowLan = useIsSettingVisible(k.allowLan)
 const isVisibleCheckUpgrade = useIsSettingVisible(k.checkCoreUpgrade)
 const isVisibleAutoUpgrade = useIsSettingVisible(k.autoUpgradeCore)
 const isVisibleDnsQuery = useIsSettingVisible(k.DNSQuery)
+const isVisibleDaeRuntime = useIsSettingVisible(k.daeRuntime)
 const canShowTunMode = computed(
   () => isVisibleTunMode.value && !activeBackend.value?.disableTunMode,
 )
-// 只有核心在 /configs 里回报了 stack 才展示，避免对不支持该字段的核心下发无效 PATCH。
 const canShowTunStack = computed(
   () =>
     !!configs.value?.tun?.stack && isVisibleTunStack.value && !activeBackend.value?.disableTunMode,
@@ -198,7 +212,15 @@ const canShowTunStack = computed(
 const hasVisibleActions = computed(() =>
   backendActions.value.some((action) => isSettingVisible(action.key)),
 )
-const showDnsQuery = computed(() => isVisibleDnsQuery.value && can('dnsQuery'))
+const showDaeRuntime = computed(
+  () =>
+    isVisibleDaeRuntime.value &&
+    activeBackend.value?.type === 'dae' &&
+    (can('runtimeSettings') || can('lifecycleControl') || can('datapath')),
+)
+const showDnsDiagnostics = computed(
+  () => isVisibleDnsQuery.value && (can('dnsQuery') || can('dnsCache') || can('dnsLog')),
+)
 const hasVisibleNetworkSettings = computed(
   () =>
     can('configPatch') &&
@@ -221,7 +243,8 @@ const hasVisibleItems = computed(
     hasVisibleActions.value ||
     hasVisibleNetworkSettings.value ||
     hasVisibleUpgradeSettings.value ||
-    showDnsQuery.value,
+    showDaeRuntime.value ||
+    showDnsDiagnostics.value,
 )
 
 const handlerCheckUpgradeCoreChange = () => {
@@ -244,7 +267,6 @@ const tunStackOptions = computed<SelectOption<string>[]>(() => {
   }))
   const current = configs.value?.tun?.stack
 
-  // 核心可能返回列表外的写法（大小写不同或新增的 stack），保留原值避免显示为空。
   if (current && !options.some((option) => option.value === current)) {
     options.unshift({ value: current, label: current })
   }
@@ -259,7 +281,6 @@ const tunStack = computed<string>({
     handlerTunStackChange(stack)
   },
 })
-// mihomo 的 PATCH /configs 里 tun.enable 不是指针，缺省会被当成 false，所以必须一起回传。
 const handlerTunStackChange = async (stack: string) => {
   try {
     await updateConfigs({ tun: { enable: configs.value?.tun.enable, stack } })

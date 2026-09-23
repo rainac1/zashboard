@@ -89,7 +89,7 @@
       </div>
     </div>
     <div
-      class="bg-base-100 border-base-200 absolute right-0 bottom-0 left-0 flex gap-2 border-t p-2 pt-2"
+      class="bg-base-100 border-base-200 overlay-glass absolute right-0 bottom-0 left-0 flex gap-2 border-t p-2 pt-2"
     >
       <SelectInput
         class="select select-sm w-26"

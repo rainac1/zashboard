@@ -1,6 +1,4 @@
 <template>
-  <!-- 连不上后端时,面板上的每一页都是空的 —— 与其让用户对着空页面猜,
-       不如直接把「哪个后端、为什么、怎么办」摆在最前面。 -->
   <Transition name="connection-error">
     <div
       v-if="visible && activeBackend"
@@ -92,7 +90,7 @@
 </template>
 
 <script setup lang="ts">
-import { probeBackend } from '@/assembly/backend'
+import { probeBackend } from '@/assembly/probe'
 import { startBackendSession } from '@/assembly/session'
 import { backendProbe } from '@/assembly/version'
 import { ROUTE_NAME } from '@/constant'
@@ -116,14 +114,11 @@ const AUTO_SWITCH_TIMEOUT = 8000
 const isSwitching = ref(false)
 const detail = ref('')
 
-// 探测结果属于上一个后端时不认,免得刚切走就弹一个旧后端的失败。
 const probe = computed(() =>
   backendProbe.value?.uuid === activeUuid.value ? backendProbe.value : undefined,
 )
 const isRetrying = computed(() => probe.value?.status === 'probing')
 
-// 失败一次就一直摆着,直到真的连上或换了后端 —— 点重试的瞬间探测状态会回到
-// probing,若跟着它走,页面会先整个消失再弹回来,像是自己好了。
 const failed = ref(false)
 
 watch(
@@ -135,8 +130,6 @@ watch(
   { immediate: true },
 )
 
-// 管理面板自己会实时探测,盖在它上面只会挡路;
-// Setup 页本来就是登录后端的地方,不必再盖一层。
 const route = useRoute()
 const visible = computed(
   () => failed.value && backendManagerView.value === null && route.name !== ROUTE_NAME.setup,
@@ -149,13 +142,9 @@ const otherBackends = computed(() =>
   backendList.value.filter((backend) => backend.uuid !== activeUuid.value),
 )
 
-// 会话探测拿到的是 axios / gRPC 的原始 message,"Network Error" 这类不透明说法
-// 要再诊断一次才有信息量(CORS?混合内容?服务没起?)。
 watch(
   probe,
   async (value) => {
-    // 重试期间(probing)留着上一轮的原因不动:清空只会让横幅退回一句废话,
-    // 而这一轮多半还是同一个原因。
     if (!value || value.status === 'connected') {
       detail.value = ''
       return
@@ -179,7 +168,6 @@ const editActiveBackend = () => {
   openBackendManager({ mode: 'edit', uuid: activeUuid.value })
 }
 
-// 一个个试太慢,同时打出去,谁先通用谁。
 const switchToReachableBackend = async () => {
   if (isSwitching.value) return
   isSwitching.value = true

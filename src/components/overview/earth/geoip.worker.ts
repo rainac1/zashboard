@@ -4,7 +4,7 @@ import {
   GeoIPChunkStoreError,
   geoIPChunkStore,
   type GeoIPFileManifest,
-} from '@/helper/geoipChunkStore'
+} from '@/helper/geoip-chunk-store'
 import { AsyncMMDBReader } from '@/helper/mmdb'
 import type { CityResponse } from 'mmdb-lib'
 import {
@@ -22,16 +22,8 @@ const DATABASE_KEY = `earth:${DBIP_CITY_URL}`
 const DATABASE_TTL = 30 * 24 * 60 * 60 * 1000
 const STORAGE_HEADROOM = 16 * 1024 * 1024
 const LOOKUP_CONCURRENCY = 16
-// The chunk LRU is shared by every in-flight lookup, so it has to be several
-// times the concurrency or the lookups evict each other's search-tree blocks.
-// Measured on the City database with 16-way lookups: 8 chunks costs 16.7 chunk
-// reads per IP, 32 costs 3.0, 64 costs 1.7. 64 × 256 KiB is 16 MiB, still two
-// orders of magnitude below loading the whole database.
 const CITY_CHUNK_CACHE_MAX = 64
 
-// Older builds kept one decompressed Blob in a separate database. It is
-// migrated as a stream, so upgrading does not copy the complete City MMDB into
-// the worker heap or force the user to download it again.
 const LEGACY_DATABASE_NAME = 'zashboard-earth-geoip'
 const LEGACY_DATABASE_STORE = 'city-database'
 
@@ -70,8 +62,6 @@ const readLegacyCache = async () => {
   const database = await openLegacyDatabase()
 
   return new Promise<LegacyCachedDatabase | undefined>((resolve, reject) => {
-    // Old keys sometimes included a package version, so inspect all legacy
-    // records and select the newest one.
     const request = database
       .transaction(LEGACY_DATABASE_STORE, 'readonly')
       .objectStore(LEGACY_DATABASE_STORE)
@@ -94,8 +84,6 @@ const deleteLegacyDatabase = () =>
 
     request.onsuccess = () => resolve()
     request.onerror = () => resolve()
-    // Another old tab may still own a connection. The deletion request remains
-    // queued, but this worker does not need to wait for that tab to close.
     request.onblocked = () => resolve()
   })
 
@@ -197,8 +185,6 @@ const ensureStorageSpace = async () => {
     }
   } catch (error) {
     if (error instanceof WorkerError) throw error
-    // Some embedded browsers expose StorageManager but reject estimate(). In
-    // that case IndexedDB remains the authoritative quota check.
   }
 }
 
@@ -293,8 +279,6 @@ const download = async (background = false) => {
     let committed: GeoIPFileManifest
 
     try {
-      // City MMDB is large, so do not retain a second complete generation.
-      // Other tabs transparently reopen the active generation on read failure.
       committed = await geoIPChunkStore.activate(DATABASE_KEY, staged)
     } catch {
       await geoIPChunkStore.discard(DATABASE_KEY, staged.generation).catch(() => {})

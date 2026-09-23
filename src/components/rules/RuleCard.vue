@@ -101,18 +101,19 @@
 </template>
 
 <script setup lang="ts">
-import { useBounceOnVisible } from '@/composables/bouncein'
+import { rulesFilter } from '@/store/rules'
+import { useBounceOnVisible } from '@/composables/use-bounce-on-visible'
+import { useRuleHitTooltip } from '@/composables/use-rule-hit-tooltip'
 import {
   getRuleSize,
   isRuleDisabled,
   isUpdateableRuleSet as checkUpdateableRuleSet,
   toggleRuleDisabledWithSideEffects,
-  useRuleHitTooltip,
-} from '@/composables/rules'
-import { notifyRequestError } from '@/helper/requestError'
-import { useTooltip } from '@/helper/tooltip'
+} from '@/helper/rules'
+import { notifyRequestError } from '@/helper/request-error'
+import { useTooltip } from '@/composables/use-tooltip'
 import { proxyGroupList } from '@/assembly/proxies'
-import { fetchRules, rulesFilter, updateRuleProviderAPI } from '@/assembly/rules'
+import { fetchRules, updateRuleProvider } from '@/assembly/rules'
 import { displayLatencyInRule, displayNowNodeInRule } from '@/store/settings'
 import type { Rule } from '@/types'
 import {
@@ -171,7 +172,7 @@ const updateRuleProviderClickHandler = async () => {
 
   isUpdating.value = true
   try {
-    await updateRuleProviderAPI(props.rule.payload)
+    await updateRuleProvider(props.rule.payload)
     await fetchRules()
   } catch (e) {
     notifyRequestError(e)

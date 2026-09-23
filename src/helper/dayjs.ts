@@ -3,10 +3,12 @@ import dayjs from 'dayjs'
 import 'dayjs/locale/ru'
 import 'dayjs/locale/zh-cn'
 import 'dayjs/locale/zh-tw'
+import duration from 'dayjs/plugin/duration'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import updateLocale from 'dayjs/plugin/updateLocale'
 import { watch } from 'vue'
 
+dayjs.extend(duration)
 dayjs.extend(relativeTime)
 dayjs.extend(updateLocale)
 dayjs.updateLocale('en', {

@@ -84,7 +84,7 @@ import {
   folders,
   reorderFolders,
   type Folder,
-} from '@/store/proxyFolders'
+} from '@/store/proxy-folders'
 import {
   Bars3Icon,
   FolderIcon,
@@ -95,7 +95,7 @@ import {
 import { computed, ref, watch } from 'vue'
 import Draggable from 'vuedraggable'
 import FolderEditor from './FolderEditor.vue'
-import { displayFolderName } from './folderName'
+import { displayFolderName } from './folder-name'
 
 const editingId = ref<string | null>(null)
 const newName = ref('')

@@ -4,7 +4,6 @@
     :title="$t('customIcon')"
   >
     <div class="flex flex-col gap-2 overflow-hidden text-sm">
-      <!-- Add new: drop zone + inputs -->
       <div
         class="border-base-300 mt-2 flex cursor-pointer items-center gap-3 rounded-lg border-2 border-dashed p-3 transition-colors"
         :class="{ 'border-primary bg-primary/5': isDraggingNew }"
@@ -129,7 +128,7 @@
 <script setup lang="ts">
 import ProxyIcon from '@/components/proxies/ProxyIcon.vue'
 import SettingItem from '@/components/settings/SettingItem.vue'
-import { PROXIES_ITEM_KEYS } from '@/config/settingsItems'
+import { PROXIES_ITEM_KEYS } from '@/config/settings-items'
 import { proxyGroupList } from '@/assembly/proxies'
 import { iconReflectList } from '@/store/settings'
 import {
@@ -155,7 +154,6 @@ const newIconReflect = reactive({
   icon: '',
 })
 
-// Track which existing item we're uploading for
 let uploadTargetItem: { icon: string; name: string; uuid: string } | null = null
 
 const readFileAsIcon = (file: File): Promise<string> => {
@@ -222,7 +220,6 @@ const handleFileSelect = async (e: Event) => {
     newIconReflect.icon = iconData
   }
 
-  // Reset file input so the same file can be selected again
   if (fileInputRef.value) {
     fileInputRef.value.value = ''
   }

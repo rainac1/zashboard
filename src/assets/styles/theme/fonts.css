@@ -1,8 +1,3 @@
-/*
- * 字体族令牌与内置 emoji 字体。
- * 每个正文字体都要和一套 emoji 字体配对，具体加载策略见 src/assets/load-fonts.ts。
- */
-
 @theme {
   --font-MiSans-NotoEmoji: 'MiSans-VF', 'NotoEmoji', system-ui;
   --font-SarasaUI-NotoEmoji: 'SarasaUiSC-Regular', 'NotoEmoji', system-ui;

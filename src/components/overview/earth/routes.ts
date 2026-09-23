@@ -23,7 +23,6 @@ const normalizeIP = (value: string) => {
   }
 }
 
-/** Splits IP, IP:port and bracketed IPv6 without interpreting a domain as an IP. */
 const destinationIP = (rawValue: string) => {
   const value = rawValue.trim()
 

@@ -5,7 +5,6 @@
     :class="settingsPaneTransition && 'overflow-x-hidden'"
     :style="padding"
   >
-    <!-- 移动端与窄内容区共用顶部控制栏；宽屏改用页内左侧导航。 -->
     <CtrlsBar v-if="!showSideNavigation">
       <div class="mx-auto flex w-full max-w-4xl flex-wrap items-center gap-2 p-2">
         <button
@@ -85,7 +84,6 @@
       </div>
     </CtrlsBar>
 
-    <!-- 移动端先展示分类首页，组件仍在下方挂载以维护准确的可搜索项目索引。 -->
     <main
       v-if="showMobileIndex"
       class="mx-auto w-full max-w-2xl p-3 pb-6"
@@ -253,12 +251,13 @@ import OverviewSettings from '@/components/settings/overview/OverviewSettings.vu
 import ProxiesSettings from '@/components/settings/proxies/ProxiesSettings.vue'
 import SettingsCustomizationDialog from '@/components/settings/SettingsCustomizationDialog.vue'
 import SettingsSearch from '@/components/settings/SettingsSearch.vue'
-import type { ReachabilityStatus } from '@/composables/backendReachability'
+import type { ReachabilityStatus } from '@/composables/use-backend-reachability'
 import NavMenu, { type NavMenuItem } from '@/components/common/NavMenu.vue'
-import { usePaddingForViews } from '@/composables/paddingViews'
-import { settingsPaneTransition } from '@/composables/pageTransition'
-import { useSettingsSection, visibleSectionKeys } from '@/composables/settingsSection'
-import { SETTINGS_CATEGORIES, SETTINGS_MENU_LABELS } from '@/config/settingsItems'
+import { usePaddingForViews } from '@/composables/use-padding-for-views'
+import { settingsPaneTransition } from '@/helper/page-transition'
+import { useSettingsSection } from '@/composables/use-settings-section'
+import { visibleSectionKeys } from '@/helper/settings-section'
+import { SETTINGS_CATEGORIES, SETTINGS_MENU_LABELS } from '@/config/settings-items'
 import { SETTINGS_MENU_KEY } from '@/constant'
 import { getLabelFromBackend, isMiddleScreen, isPWA } from '@/helper/utils'
 import { activeBackend, activeUuid } from '@/store/setup'
@@ -447,3 +446,69 @@ watch(
 
 onMounted(normalizeQuery)
 </script>
+
+<style>
+@keyframes highlightFlash {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 100%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 30%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 0%, transparent);
+  }
+}
+
+.highlight-flash {
+  animation: highlightFlash 0.6s ease-out 2;
+}
+
+@keyframes settingsPanePush {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes settingsPanePop {
+  from {
+    opacity: 0;
+    transform: translateX(-25%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes settingsPanePopWithoutFade {
+  from {
+    transform: translateX(-25%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.settings-pane-push {
+  animation: settingsPanePush var(--page-transition-duration) var(--page-transition-ease);
+}
+
+.settings-pane-pop {
+  animation: settingsPanePop var(--page-transition-duration) var(--page-transition-ease);
+}
+
+.custom-background .settings-pane-pop {
+  animation-name: settingsPanePopWithoutFade;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-pane-push,
+  .settings-pane-pop {
+    animation-duration: 0.01ms;
+  }
+}
+</style>

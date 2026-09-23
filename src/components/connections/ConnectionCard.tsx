@@ -1,17 +1,18 @@
+import { can } from '@/assembly/backend'
 import {
-  blockConnectionByIdAPI,
-  disconnectByIdAPI,
+  blockConnectionById,
+  disconnectById,
   getConnectionDisplayValue,
 } from '@/assembly/connections'
-import { useBounceOnVisible } from '@/composables/bouncein'
-import { useConnections } from '@/composables/connections'
+import { useBounceOnVisible } from '@/composables/use-bounce-on-visible'
+import { useConnections } from '@/composables/use-connections'
 import {
   CONNECTION_TAB_TYPE,
   CONNECTIONS_TABLE_ACCESSOR_KEY,
   PROXY_CHAIN_DIRECTION,
 } from '@/constant'
 import { getConnectionChains, getConnectionSmartBlock } from '@/helper'
-import { notifyRequestError } from '@/helper/requestError'
+import { notifyRequestError } from '@/helper/request-error'
 import { connectionFilter, connectionTabShow, isClosedConnection } from '@/store/connections'
 import { connectionCardLines, proxyChainDirection, showFullProxyChain } from '@/store/settings'
 import type { Connection } from '@/types'
@@ -194,12 +195,14 @@ export default defineComponent<{
           </div>
         ),
         [CONNECTIONS_TABLE_ACCESSOR_KEY.Close]: () => {
+          if (!can('connectionsClose')) return <div></div>
+
           const closeButton = (
             <button
               class="btn btn-circle btn-xs"
               onClick={(e) => {
                 e.stopPropagation()
-                disconnectByIdAPI(conn.id).catch(notifyRequestError)
+                disconnectById(conn.id).catch(notifyRequestError)
               }}
             >
               <XMarkIcon class="h-4 w-4" />
@@ -212,7 +215,7 @@ export default defineComponent<{
                 class="btn btn-circle btn-xs"
                 onClick={(e) => {
                   e.stopPropagation()
-                  blockConnectionByIdAPI(conn.id).catch(notifyRequestError)
+                  blockConnectionById(conn.id).catch(notifyRequestError)
                 }}
               >
                 <NoSymbolIcon class="h-4 w-4" />
@@ -229,8 +232,6 @@ export default defineComponent<{
         },
       }
       const isClosed = isClosedConnection(conn)
-      // 淡化只能落在行上:根节点的 opacity 归 bounce-in 入场动画所有(见 composables/bouncein),
-      // 两者写在同一元素上会互相覆盖。
       const dimmed = isClosed && connectionTabShow.value === CONNECTION_TAB_TYPE.ALL
 
       return (
@@ -241,7 +242,6 @@ export default defineComponent<{
           {connectionCardLines.value.map((line) => (
             <div class={['flex h-5 items-center gap-1 text-sm', dimmed ? 'opacity-60' : '']}>
               {line
-                // 已关闭的连接关不掉,不给按钮(「已关闭」与「全部」两个 tab 都适用)。
                 .filter((key) => key !== CONNECTIONS_TABLE_ACCESSOR_KEY.Close || !isClosed)
                 .map((key) => {
                   return componentMap[key]()

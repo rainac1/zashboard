@@ -11,15 +11,12 @@ export const isPWA = (() => {
 })()
 
 export const prettyBytesHelper = (bytes: number, opts?: Options) => {
-  // prettyBytes 对 NaN / Infinity 是抛错的。格式化函数几乎全在渲染函数里调用,
-  // 一个脏字段抛出去就会毁掉整棵 vnode 树(而不只是这一格),故就地兜住。
   return prettyBytes(Number.isFinite(bytes) ? bytes : 0, {
     binary: false,
     ...opts,
   })
 }
 
-// 速度每秒都在刷新,不足 1 kB 时继续按 kB 显示,避免 B/kB 单位来回切换让数值大幅跳动。
 export const prettySpeedHelper = (bytes: number, opts?: Options) => {
   const value = Number.isFinite(bytes) ? bytes : 0
   const maximumFractionDigits = opts?.maximumFractionDigits ?? 1
@@ -31,6 +28,14 @@ export const prettySpeedHelper = (bytes: number, opts?: Options) => {
 
 export const fromNow = (timestamp: string | number) => {
   return dayjs(timestamp).fromNow()
+}
+
+export const prettyUptimeHelper = (seconds: number) => {
+  if (!Number.isFinite(seconds) || seconds < 0) return '-'
+
+  const uptime = dayjs.duration(seconds, 'seconds')
+
+  return uptime.days() > 0 ? uptime.format('D[d] HH:mm:ss') : uptime.format('HH:mm:ss')
 }
 
 export const getDashboardSettingsFromStorage = () => {
@@ -107,7 +112,6 @@ export const getMinCardWidth = (size: PROXY_CARD_SIZE) => {
 
 export const PROXIES_PARENT_CLASS = 'proxies-scrollable-parent'
 
-// 新格式 protocol=http/https 优先,旧格式 http / https 标记参数仍保留兼容,最后兜底当前页面协议。
 const getProtocolFromQuery = (query: URLSearchParams) => {
   const protocol = query.get('protocol')
 
@@ -130,9 +134,13 @@ export const getBackendFromUrl = () => {
   )
 
   if (query.has('hostname')) {
+    // 后端类型:'singbox' 走 sing-box API(gRPC),'dae' 走 dae 原生 API,其余(含缺省)按 'clash' 处理。
+    const typeParam = query.get('type')
+    const type: BackendType =
+      typeParam === 'dae' ? 'dae' : typeParam === 'singbox' ? 'singbox' : 'clash'
+
     return {
-      // 后端类型:'singbox' 走 sing-box API(gRPC),其余(含缺省)按 'clash' 处理。
-      type: (query.get('type') === 'singbox' ? 'singbox' : 'clash') as BackendType,
+      type,
       protocol: getProtocolFromQuery(query),
       secondaryPath: query.get('secondaryPath') || '',
       host: query.get('hostname') as string,

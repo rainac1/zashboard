@@ -56,7 +56,7 @@ import OpenVPNPanel from '@/components/tools/OpenVPNPanel.vue'
 import TailscalePanel from '@/components/tools/TailscalePanel.vue'
 import TerminalPanel from '@/components/tools/TerminalPanel.vue'
 import UsbipPanel from '@/components/tools/UsbipPanel.vue'
-import { usePaddingForViews } from '@/composables/paddingViews'
+import { usePaddingForViews } from '@/composables/use-padding-for-views'
 import type { SSHSessionOptions } from '@/composables/tailscaleSSH'
 import {
   StartedService,

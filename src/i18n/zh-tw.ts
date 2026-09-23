@@ -1,7 +1,6 @@
 import type { LANG_MESSAGE } from './en'
 
 const zhTW: LANG_MESSAGE = {
-  // Navigation
   setup: '配置',
   overview: '概覽',
   proxies: '代理',
@@ -176,11 +175,11 @@ const zhTW: LANG_MESSAGE = {
   ovpnCancel: '取消',
   ovpnVerifying: '驗證中',
 
-  // Shared labels and actions
   protocol: '協議',
   host: '主機',
   port: '端口',
   password: '密碼',
+  token: '權杖',
   submit: '提交',
   cancel: '取消',
   delete: '刪除',
@@ -192,7 +191,6 @@ const zhTW: LANG_MESSAGE = {
   goroutines: 'Goroutines',
   noData: '暫無資料',
 
-  // Backend actions and feedback
   flushFakeIP: '清空Fake IP',
   flushDNSCache: '清空DNS快取',
   flushDNSCacheSuccess: 'DNS快取清空成功',
@@ -224,7 +222,6 @@ const zhTW: LANG_MESSAGE = {
   logLevel: '日誌等級',
   logType: '日誌類型',
 
-  // Connections, proxies, and rules pages
   twoColumnProxyGroup: '雙列顯示代理組',
   type: '類型',
   process: '進程',
@@ -298,7 +295,6 @@ const zhTW: LANG_MESSAGE = {
   latencydesc: '按延遲降序',
   latencyasc: '按延遲升序',
 
-  // Settings sections and dialogs
   language: '面板語言',
   automaticDisconnection: '切換節點時自動斷開連接',
   backend: '後端',
@@ -318,7 +314,6 @@ const zhTW: LANG_MESSAGE = {
   dots: '點',
   bar: '條',
 
-  // Settings page
   exportSettings: '匯出設定',
   importSettings: '匯入設定',
   dashboardSettings: '面板設定',
@@ -365,7 +360,6 @@ const zhTW: LANG_MESSAGE = {
   autoSwitchBackend: '切換到第一個可用的後端',
   noReachableBackend: '其他後端也都連不上',
 
-  // Connection diagnosis
   diagnosisUnauthorized: '密碼不對，後端拒絕了這次請求',
   diagnosisTimeout: '後端沒有在規定時間內回應',
   diagnosisBadEndpoint: '位址能連上，但對面不是這個 API，或者路徑寫錯了',
@@ -378,7 +372,6 @@ const zhTW: LANG_MESSAGE = {
     '後端連不上 —— 也可能後端是好的，只是瀏覽器不允許 HTTPS 頁面存取 HTTP 後端；可以試著用 HTTP 開啟面板',
   diagnosisUnreachable: '後端連不上，請檢查位址與連接埠是否正確、核心是否在執行',
 
-  // Backend settings
   ipv6Test: 'IPv6 測試',
   socksPort: 'Socks 端口',
   httpPort: 'HTTP 端口',
@@ -391,7 +384,6 @@ const zhTW: LANG_MESSAGE = {
   normal: '正常',
   large: '大',
 
-  // Overview page
   autoIPCheckWhenStart: '自動檢查 IP',
   autoConnectionCheckWhenStart: '自動檢查連接',
   networkInfo: '網路資訊',
@@ -422,7 +414,6 @@ const zhTW: LANG_MESSAGE = {
   testFailedTip: '{name}\n測速超時',
   updateFinishedTip: '{number} 更新完成',
 
-  // Page controls and interaction
   independentLatencyTest: '獨立延遲測試',
   independentLatencyTestTip:
     '開啟獨立延遲測試會在測速中盡可能的使用配置檔案中的url覆蓋面板設定的url，並展示根據策略組設定的url獲取的延遲。',
@@ -488,7 +479,6 @@ const zhTW: LANG_MESSAGE = {
   blurIntensity: '毛玻璃強度',
   scrollAnimationEffect: '滾動動畫效果',
 
-  // Import, export, and upgrade
   importFromFile: '從檔案匯入',
   importFromUrl: '從 URL 匯入',
   uploadSettingsSuccess: '設定上傳成功',
@@ -606,7 +596,7 @@ const zhTW: LANG_MESSAGE = {
   retry: '重試',
   connectionHistory: '連接歷史',
   ruleHitCountCard: '規則命中統計',
-  honkStatsCard: 'honk 執行時統計',
+  honkStatsCard: '執行時統計',
   honkStatsOutbounds: '出站',
   honkStatsActiveConns: '活躍',
   honkStatsErrors: '錯誤',
@@ -675,12 +665,10 @@ const zhTW: LANG_MESSAGE = {
   ruleMissCount: '未命中: {count} 次',
   ruleLastMiss: '最後未命中: {time}',
 
-  // Smart Core
   RarelyUsed: '很少使用',
   OccasionalUsed: '偶爾使用',
   MostUsed: '經常使用',
 
-  // 代理資料夾
   proxyFolderMode: '資料夾模式',
   folderModeAuto: '自動',
   folderModeOn: '開啟',
@@ -704,6 +692,66 @@ const zhTW: LANG_MESSAGE = {
   folder_preview: '自動匹配的代理組',
   folder_no_matches: '沒有符合的代理組',
   folder_delete_confirm: '確認刪除資料夾「{name}」？',
+  apply: '套用',
+  daeDiagnostics: 'dae 診斷',
+  daeDnsCache: 'DNS 快取',
+  daeDnsLog: 'DNS 日誌',
+  daeRoutingTrace: '規則模擬',
+  daeDatapath: '資料面',
+  daeTraceRun: '模擬',
+  daeDropCacheName: '依網域刪除',
+  daeCached: '命中快取',
+  daeDatapathKind: '資料面類型',
+  daeVisibility: '可見範圍',
+  daeHooks: '掛載點',
+  daeRouting: '路由',
+  daeHealth: '健康狀態',
+  daeConnStateMap: '連線狀態表',
+  daeFlowTrace: '決策鏈路',
+  daeRuntimeSettings: '執行階段設定',
+  daeSettingsSource_config: '來自設定檔',
+  daeSettingsSource_runtime: '執行階段覆寫',
+  daeLogRecords: '日誌緩衝筆數',
+  daeDnsLogRecords: 'DNS 日誌筆數',
+  daeMaxFlows: '最大流量紀錄',
+  daeFlowRetention: '流量紀錄保留（秒）',
+  daeConfigSources: '設定來源',
+  daeLines: '行',
+  daeReadOnly: '唯讀',
+  daeValidateSyntax: '語法檢查',
+  daeValidateFull: '完整檢查',
+  daeSaveAndReload: '儲存並重載',
+  daeConfigValid: '設定檢查通過',
+  daeConfigInvalid: '設定檢查未通過',
+  daeConfigSaved: '已儲存並重載',
+  daeEntries: '節點與訂閱',
+  daeSubscriptions: '訂閱',
+  daeNodes: '節點',
+  daeAddNode: '新增節點',
+  daeAddSubscription: '新增訂閱',
+  daeDeleteConfirm: '確認刪除「{name}」？',
+  daeEntryCreated: '已建立',
+  daeEntryDeleted: '已刪除',
+  daeGroupUpdated: '代理群組已更新',
+  daeGroupPolicy: '策略',
+  daeDefaultMember: '預設成員',
+  daeFinalOutbound: '兜底出站',
+  daeTolerance: '容差（毫秒）',
+  daeIdleTimeout: '閒置逾時（秒）',
+  daeInterruptConnections: '切換時中斷連線',
+  daeGroupReadOnly: '此代理群組無法透過 API 編輯',
+  daeLifecycle: '暫停 / 恢復',
+  daeSuspend: '暫停核心',
+  daeResume: '恢復核心',
+  daeSuspendConfirm: '確認暫停核心？目前連線會被關閉。',
+  daeSuspendSuccess: '核心已暫停',
+  daeResumeSuccess: '核心已恢復',
+  daeConnectionsTruncated: '僅顯示 {total} 條連線中的前 {limit} 條',
+  daeRuntime: 'dae 執行階段',
+  daeUptime: '運行時長',
+  daeGeneration: '設定代次',
+  daeConfigRevision: '設定版本',
+  daeMissingInputs: '缺少輸入',
 }
 
 export default zhTW

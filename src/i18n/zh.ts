@@ -1,7 +1,6 @@
 import type { LANG_MESSAGE } from './en'
 
 const zh: LANG_MESSAGE = {
-  // Navigation
   setup: '配置',
   overview: '概览',
   proxies: '代理',
@@ -176,11 +175,11 @@ const zh: LANG_MESSAGE = {
   ovpnCancel: '取消',
   ovpnVerifying: '验证中',
 
-  // Shared labels and actions
   protocol: '协议',
   host: '主机',
   port: '端口',
   password: '密码',
+  token: '令牌',
   submit: '提交',
   cancel: '取消',
   delete: '删除',
@@ -192,7 +191,6 @@ const zh: LANG_MESSAGE = {
   goroutines: 'Goroutines',
   noData: '暂无数据',
 
-  // Backend actions and feedback
   flushFakeIP: '清空Fake IP',
   flushDNSCache: '清空DNS缓存',
   flushDNSCacheSuccess: 'DNS缓存清空成功',
@@ -224,7 +222,6 @@ const zh: LANG_MESSAGE = {
   logLevel: '日志等级',
   logType: '日志类型',
 
-  // Connections, proxies, and rules pages
   twoColumnProxyGroup: '双列显示代理组',
   type: '类型',
   process: '进程',
@@ -298,7 +295,6 @@ const zh: LANG_MESSAGE = {
   latencydesc: '按延迟降序',
   latencyasc: '按延迟升序',
 
-  // Settings sections and dialogs
   language: '面板语言',
   automaticDisconnection: '切换节点时自动断开连接',
   backend: '后端',
@@ -318,7 +314,6 @@ const zh: LANG_MESSAGE = {
   dots: '点',
   bar: '条',
 
-  // Settings page
   exportSettings: '导出设置',
   importSettings: '导入设置',
   dashboardSettings: '面板配置',
@@ -365,7 +360,6 @@ const zh: LANG_MESSAGE = {
   autoSwitchBackend: '切换到第一个可用的后端',
   noReachableBackend: '其他后端也都连不上',
 
-  // Connection diagnosis
   diagnosisUnauthorized: '密码不对，后端拒绝了这次请求',
   diagnosisTimeout: '后端没有在规定时间内响应',
   diagnosisBadEndpoint: '地址能连上，但对面不是这个 API，或者路径写错了',
@@ -378,7 +372,6 @@ const zh: LANG_MESSAGE = {
     '后端连不上 —— 也可能后端是好的，只是浏览器不允许 HTTPS 页面访问 HTTP 后端；可以试着用 HTTP 打开面板',
   diagnosisUnreachable: '后端连不上，请检查地址与端口是否正确、内核是否在运行',
 
-  // Backend settings
   ipv6Test: 'IPv6 测试',
   socksPort: 'Socks 端口',
   httpPort: 'HTTP 端口',
@@ -391,7 +384,6 @@ const zh: LANG_MESSAGE = {
   normal: '正常',
   large: '大',
 
-  // Overview page
   autoIPCheckWhenStart: '自动检查 IP',
   autoConnectionCheckWhenStart: '自动检查连接',
   networkInfo: '网络信息',
@@ -422,7 +414,6 @@ const zh: LANG_MESSAGE = {
   testFailedTip: '{name}\n测速超时',
   updateFinishedTip: '{number} 更新完成',
 
-  // Page controls and interaction
   independentLatencyTest: '独立延迟测试',
   independentLatencyTestTip:
     '开启独立延迟测试会在测速中尽可能的使用配置文件中的url覆盖面板设置的url，并展示根据策略组设置的url获取的延迟。',
@@ -488,7 +479,6 @@ const zh: LANG_MESSAGE = {
   blurIntensity: '毛玻璃强度',
   scrollAnimationEffect: '滚动动画效果',
 
-  // Import, export, and upgrade
   importFromFile: '从文件导入',
   importFromUrl: '从 URL 导入',
   uploadSettingsSuccess: '设置上传成功',
@@ -606,7 +596,7 @@ const zh: LANG_MESSAGE = {
   retry: '重试',
   connectionHistory: '连接历史',
   ruleHitCountCard: '规则命中统计',
-  honkStatsCard: 'honk 运行时统计',
+  honkStatsCard: '运行时统计',
   honkStatsOutbounds: '出站',
   honkStatsActiveConns: '活跃',
   honkStatsErrors: '错误',
@@ -675,12 +665,10 @@ const zh: LANG_MESSAGE = {
   ruleMissCount: '未命中: {count} 次',
   ruleLastMiss: '最后未命中: {time}',
 
-  // Smart Core
   RarelyUsed: '很少使用',
   OccasionalUsed: '偶尔使用',
   MostUsed: '经常使用',
 
-  // 代理文件夹
   proxyFolderMode: '文件夹模式',
   folderModeAuto: '自动',
   folderModeOn: '开启',
@@ -704,6 +692,66 @@ const zh: LANG_MESSAGE = {
   folder_preview: '自动匹配的代理组',
   folder_no_matches: '没有匹配的代理组',
   folder_delete_confirm: '确认删除文件夹「{name}」？',
+  apply: '应用',
+  daeDiagnostics: 'dae 诊断',
+  daeDnsCache: 'DNS 缓存',
+  daeDnsLog: 'DNS 日志',
+  daeRoutingTrace: '规则模拟',
+  daeDatapath: '数据面',
+  daeTraceRun: '模拟',
+  daeDropCacheName: '按域名删除',
+  daeCached: '命中缓存',
+  daeDatapathKind: '数据面类型',
+  daeVisibility: '可见范围',
+  daeHooks: '挂载点',
+  daeRouting: '路由',
+  daeHealth: '健康状态',
+  daeConnStateMap: '连接状态表',
+  daeFlowTrace: '决策链路',
+  daeRuntimeSettings: '运行时设置',
+  daeSettingsSource_config: '来自配置文件',
+  daeSettingsSource_runtime: '运行时覆盖',
+  daeLogRecords: '日志缓冲条数',
+  daeDnsLogRecords: 'DNS 日志条数',
+  daeMaxFlows: '最大流量记录',
+  daeFlowRetention: '流量记录保留（秒）',
+  daeConfigSources: '配置源',
+  daeLines: '行',
+  daeReadOnly: '只读',
+  daeValidateSyntax: '语法校验',
+  daeValidateFull: '完整校验',
+  daeSaveAndReload: '保存并重载',
+  daeConfigValid: '配置校验通过',
+  daeConfigInvalid: '配置校验未通过',
+  daeConfigSaved: '已保存并重载',
+  daeEntries: '节点与订阅',
+  daeSubscriptions: '订阅',
+  daeNodes: '节点',
+  daeAddNode: '添加节点',
+  daeAddSubscription: '添加订阅',
+  daeDeleteConfirm: '确认删除「{name}」？',
+  daeEntryCreated: '已创建',
+  daeEntryDeleted: '已删除',
+  daeGroupUpdated: '代理组已更新',
+  daeGroupPolicy: '策略',
+  daeDefaultMember: '默认成员',
+  daeFinalOutbound: '兜底出站',
+  daeTolerance: '容差（毫秒）',
+  daeIdleTimeout: '空闲超时（秒）',
+  daeInterruptConnections: '切换时断开连接',
+  daeGroupReadOnly: '该代理组无法通过 API 编辑',
+  daeLifecycle: '暂停 / 恢复',
+  daeSuspend: '暂停内核',
+  daeResume: '恢复内核',
+  daeSuspendConfirm: '确认暂停内核？当前连接会被关闭。',
+  daeSuspendSuccess: '内核已暂停',
+  daeResumeSuccess: '内核已恢复',
+  daeConnectionsTruncated: '仅显示 {total} 条连接中的前 {limit} 条',
+  daeRuntime: 'dae 运行时',
+  daeUptime: '运行时长',
+  daeGeneration: '配置代次',
+  daeConfigRevision: '配置版本',
+  daeMissingInputs: '缺失输入',
 }
 
 export default zh

@@ -57,11 +57,13 @@
 </template>
 
 <script setup lang="ts">
-import { KEYBOARD_SHORTCUT_ACTION, useKeyboardShortcuts } from '@/composables/keyboard'
-import { getDownloadSpeedByProxyGroup } from '@/composables/proxyGroupTraffic'
+import { hiddenGroupMap } from '@/store/proxies'
+import { useKeyboardShortcuts } from '@/composables/use-keyboard'
+import { KEYBOARD_SHORTCUT_ACTION } from '@/helper/keyboard'
+import { getDownloadSpeedByProxyGroup } from '@/helper/proxy-group-traffic'
 import { isHiddenGroup } from '@/helper'
-import { hiddenGroupMap, proxyMap } from '@/assembly/proxies'
-import { useTooltip } from '@/helper/tooltip'
+import { proxyMap } from '@/assembly/proxies'
+import { useTooltip } from '@/composables/use-tooltip'
 import { prettyBytesHelper } from '@/helper/utils'
 import { manageHiddenGroup, twoColumnProxyGroup } from '@/store/settings'
 import { twMerge } from 'tailwind-merge'

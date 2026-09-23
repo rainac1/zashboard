@@ -27,7 +27,7 @@
       <div
         :class="getBgColor(lowLatency - 1)"
         :style="{
-          width: getPreviewWidth(latencyCounts.good), // cant use tw class, otherwise dynamic classname won't be generated
+          width: getPreviewWidth(latencyCounts.good),
         }"
       />
       <div
@@ -55,7 +55,7 @@
 <script setup lang="ts">
 import { NOT_CONNECTED, PROXY_PREVIEW_TYPE } from '@/constant'
 import { getColorForLatency } from '@/helper'
-import { useTooltip } from '@/helper/tooltip'
+import { useTooltip } from '@/composables/use-tooltip'
 import { latencyMapOf } from '@/assembly/proxies'
 import { lowLatency, mediumLatency, proxyPreviewType } from '@/store/settings'
 import { useElementSize } from '@vueuse/core'
@@ -109,13 +109,11 @@ const showDots = computed(() => {
   )
 })
 
-// 查全局延迟表,几百个节点的预览条不必自己再顺链算一遍
 const latencyMap = latencyMapOf(() => props.groupName)
 const latencyList = computed(() =>
   props.nodes.map((name) => latencyMap.value.get(name) ?? NOT_CONNECTED),
 )
 
-// 只有点阵形态需要逐节点的对象,进度条形态只要四个计数,别为几百个节点白建一遍数组
 const nodesLatency = computed(() => {
   if (!showDots.value) {
     return []
@@ -135,7 +133,6 @@ const getBgColor = (latency: number) => {
   }
 }
 
-// 一趟数完四档,别为每一档各扫一遍
 const latencyCounts = computed(() => {
   const counts = { good: 0, medium: 0, bad: 0, notConnected: 0 }
 

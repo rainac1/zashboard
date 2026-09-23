@@ -6,7 +6,6 @@
         v-if="showDashboardUpgrade"
         :setting-key="k.actions"
         :anchor-key="`${k.actions}.upgradeDashboard`"
-        :when="can('dashboardUpgrade')"
       >
         <div class="setting-item-label">{{ $t('upgradeDashboard') }}</div>
         <button
@@ -22,8 +21,8 @@
       </SettingItem>
       <LanguageSelect />
       <SettingItem
+        v-if="showDashboardUpgrade"
         :setting-key="k.autoUpgradeDashboard"
-        :when="can('dashboardUpgrade')"
       >
         <div class="setting-item-label">{{ $t('autoUpgradeDashboard') }}</div>
         <input
@@ -198,20 +197,20 @@
 
 <script setup lang="ts">
 import { can, showDisplayAllFeatures } from '@/assembly/backend'
-import { upgradeUIAPI } from '@/assembly/version'
+import { upgradeUI } from '@/assembly/version'
 import DashboardSettings from '@/components/common/DashboardSettings.vue'
 import SelectInput from '@/components/common/SelectInput.vue'
 import TextInput from '@/components/common/TextInput.vue'
 import KeyboardShortcutsSettings from '@/components/settings/general/KeyboardShortcutsSettings.vue'
 import LanguageSelect from '@/components/settings/general/LanguageSelect.vue'
 import SettingItem from '@/components/settings/SettingItem.vue'
-import { useIsSettingVisible } from '@/composables/settings'
-import { GENERAL_ITEM_KEYS } from '@/config/settingsItems'
+import { useIsSettingVisible } from '@/composables/use-setting-visibility'
+import { GENERAL_ITEM_KEYS } from '@/config/settings-items'
 import { IP_INFO_API } from '@/constant'
 import { handlerUpgradeSuccess } from '@/helper'
 import { notifyActionPending } from '@/helper/notification'
-import { notifyRequestError } from '@/helper/requestError'
-import { useTooltip } from '@/helper/tooltip'
+import { notifyRequestError } from '@/helper/request-error'
+import { useTooltip } from '@/composables/use-tooltip'
 import { isMiddleScreen } from '@/helper/utils'
 import {
   autoDisconnectIdleUDP,
@@ -249,7 +248,10 @@ const isVisibleShortcuts = useIsSettingVisible(k.keyboardShortcuts)
 const isVisibleDisplayAllFeatures = useIsSettingVisible(k.displayAllFeatures)
 
 const hasVisibleApplicationItems = computed(
-  () => isVisibleActions.value || isVisibleLanguage.value || isVisibleAutoUpgrade.value,
+  () =>
+    isVisibleActions.value ||
+    isVisibleLanguage.value ||
+    (showDashboardUpgrade.value && isVisibleAutoUpgrade.value),
 )
 const hasVisibleNetworkItems = computed(
   () =>
@@ -270,17 +272,15 @@ const hasVisibleInteractionItems = computed(
     (showDisplayAllFeatures.value && isVisibleDisplayAllFeatures.value),
 )
 
-// honk 没有 /upgrade/ui,按钮点了必然 404。
 const showDashboardUpgrade = computed(() => can('dashboardUpgrade'))
 
 const isUIUpgrading = ref(false)
 const handlerClickUpgradeUI = async () => {
   if (isUIUpgrading.value) return
   isUIUpgrading.value = true
-  // 升级请求可能跑好一会儿,按钮只是轻轻闪一下 —— 先弹一条「执行中」,结果出来再顶掉。
   const notifyKey = notifyActionPending('upgradeDashboard')
   try {
-    await upgradeUIAPI()
+    await upgradeUI()
     handlerUpgradeSuccess(notifyKey)
     setTimeout(() => window.location.reload(), 1000)
   } catch (error) {

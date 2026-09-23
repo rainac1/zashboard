@@ -43,17 +43,17 @@
 </template>
 
 <script setup lang="ts">
+import { smartWeightsMap } from '@/assembly/proxies'
 import { PROXY_CARD_SIZE, PROXY_SORT_TYPE } from '@/constant'
 import { checkTruncation } from '@/helper/tooltip'
 import {
   highlightProxyNode,
   highlightedProxyNode,
   scrollNodeIntoViewKey,
-} from '@/composables/proxiesScroll'
+} from '@/helper/proxies-scroll'
 import { proxyLatencyTest } from '@/assembly/proxies'
 import { getIPv6ByName, getTestUrl, proxyMap } from '@/assembly/proxies'
 import { IPv6test, proxyCardSize, proxySortType, truncateProxyName } from '@/store/settings'
-import { smartWeightsMap } from '@/store/smart'
 import { computed, inject, nextTick, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import LatencyTag from './LatencyTag.vue'
@@ -92,13 +92,11 @@ const latencyTipAnimationClass = computed(() =>
   highlightedProxyNode.value === props.name ? ['latency-highlight'] : [],
 )
 
-/*
- * 这几段类名都是本组件自己写死的,唯一会打架的是底色,分支写掉就行 —— 不必再过一遍
- * tailwind-merge。一次展开要挂几十张卡片,省的是几十次类名解析。
- */
 const cardClass = computed(() => [
   'relative flex cursor-pointer flex-col items-start rounded-md hover:shadow-sm',
-  props.active ? 'bg-primary/95 sm:hover:bg-primary' : 'bg-base-200 sm:hover:bg-base-300/50',
+  props.active
+    ? 'proxy-active-card bg-primary/95 sm:hover:bg-primary'
+    : 'bg-base-200 sm:hover:bg-base-300/50',
   isSmallCard.value ? 'gap-1 p-1' : 'gap-2 p-2',
   latencyTipAnimationClass.value,
 ])
@@ -107,18 +105,15 @@ const handlerLatencyTest = async () => {
 
   isLatencyTesting.value = true
   try {
-    await proxyLatencyTest(props.name, getTestUrl(props.groupName), undefined, props.groupName)
+    await proxyLatencyTest(props.name, getTestUrl(props.groupName))
     isLatencyTesting.value = false
   } catch {
     isLatencyTesting.value = false
   }
 
   if ([PROXY_SORT_TYPE.LATENCY_ASC, PROXY_SORT_TYPE.LATENCY_DESC].includes(proxySortType.value)) {
-    // 高亮先标上:重排可能把这张卡挪出虚拟列表的渲染窗口,那时组件已经没了
     highlightProxyNode(props.name)
-    // 等排序后的 DOM 落地再量位置,否则拿到的还是重排前的旧坐标。
     await nextTick()
-    // 虚拟列表能定位尚未挂载的节点,位置提示交给上面的高亮。
     scrollNodeIntoView?.(props.name)
   }
 }
@@ -127,5 +122,30 @@ const handlerLatencyTest = async () => {
 <style scoped>
 .tooltip:before {
   z-index: 20;
+}
+
+.latency-highlight::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background-color: var(--color-info);
+  animation: latencyHighlightFade 1.5s ease-out forwards;
+}
+
+@keyframes latencyHighlightFade {
+  0% {
+    opacity: 0.2;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .latency-highlight::after {
+    animation: none;
+  }
 }
 </style>

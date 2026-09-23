@@ -1,17 +1,5 @@
-/*
- * 项目自有组件：不属于 daisyUI 也不属于第三方库的类。
- * daisyUI 类的覆写请放 daisyui.css。
- */
-
-/* ---------- 通用容器 ---------- */
-
 @utility base-container {
   @apply bg-base-100 overflow-hidden rounded-xl shadow-xs;
-}
-
-/* 页面包裹层的底色。刻意不用 bg-base-200 工具类：见 utilities/appearance.css 里的说明。 */
-.home-page {
-  @apply bg-base-200;
 }
 
 @utility floating-menu-panel {
@@ -41,28 +29,6 @@
     transition: none;
   }
 }
-
-/* ---------- 底部 dock ---------- */
-
-.dock {
-  @apply absolute right-2 left-2 z-30 rounded-3xl;
-  backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid color-mix(in srgb, var(--color-base-content) 8%, transparent);
-  box-shadow:
-    0 4px 16px color-mix(in srgb, var(--color-base-content) 6%, transparent),
-    inset 0 1px 0 color-mix(in srgb, white 35%, transparent),
-    inset 0 0 0 1px color-mix(in srgb, white 6%, transparent);
-}
-
-/* ---------- 导航项：侧栏菜单与页面内的分段 Tabs 共用 ---------- */
-
-/*
- * 只放两边真正共享的东西：结构、圆角、选中/hover/focus 的交互配色。
- * 尺寸、排布方向、底槽、滑块配色各用各的，写在 NavMenu.vue / SegmentedControl.vue 的
- * <style scoped> 里 —— scoped 会多带一个 [data-v-*]，特异性天然压过这里的无层规则。
- *
- * 选中态两种写法：路由项是 aria-current，分段 Tabs 是 aria-selected。
- */
 
 .nav-menu {
   @apply flex min-w-0;
@@ -96,8 +62,9 @@
   }
 }
 
-.nav-item:active {
-  background-color: color-mix(in srgb, var(--color-base-content) 8%, transparent);
+.nav-item:not([aria-current='page'], [aria-selected='true']):active {
+  background-color: color-mix(in srgb, var(--color-base-content) 10%, transparent);
+  transition-duration: 0s;
 }
 
 .nav-item:focus-visible {
@@ -109,93 +76,6 @@
   @apply shrink-0 font-normal whitespace-nowrap tabular-nums;
   color: color-mix(in srgb, var(--color-base-content) 45%, transparent);
 }
-
-/* ---------- 侧栏 ---------- */
-
-/* 展开态的指标面板：一行一个指标，标题和图例同一行，走势在下面；
-   行与行之间通铺一条分隔线，整块是 macOS 的分组列表而不是三张挨着的图。 */
-
-.sidebar-chart-group {
-  --sidebar-chart-row: 7.5rem;
-  @apply flex min-h-0 flex-col;
-}
-
-/* 高度上限卡在整行上，滚动时不会露出半行 */
-.sidebar-chart-group[data-rows='1'] {
-  max-height: var(--sidebar-chart-row);
-}
-.sidebar-chart-group[data-rows='2'] {
-  max-height: calc(var(--sidebar-chart-row) * 2);
-}
-.sidebar-chart-group[data-rows='3'] {
-  max-height: calc(var(--sidebar-chart-row) * 3);
-}
-
-/* 滚动的是内层：外层要留着 base-container 的 overflow-hidden 去切圆角 */
-.sidebar-chart-scroller {
-  @apply flex min-h-0 flex-1 flex-col overflow-y-auto;
-}
-
-.sidebar-chart-row {
-  @apply shrink-0;
-  height: var(--sidebar-chart-row);
-}
-
-.sidebar-chart-row + .sidebar-chart-row {
-  border-top: 1px solid var(--color-base-border);
-}
-
-.sidebar-chart-head {
-  @apply flex min-w-0 items-center gap-2 px-3 pt-2 pb-0.5;
-}
-
-.sidebar-chart-title {
-  @apply min-w-0 flex-1 truncate text-[11px] leading-4 font-medium;
-  color: color-mix(in srgb, var(--color-base-content) 70%, transparent);
-}
-
-/* 图例是说明而不是数据，比标题再轻一档；窄语言下和标题一样能截断，
-   免得把右边的暂停按钮挤出行外 */
-.sidebar-chart-legend {
-  @apply flex min-w-0 items-center gap-2.5 text-[10px] leading-4;
-  color: color-mix(in srgb, var(--color-base-content) 70%, transparent);
-}
-
-.sidebar-chart-legend-item {
-  @apply flex min-w-0 items-center gap-1 truncate;
-}
-
-/* 颜色由组件按线条给，这里只定形状 */
-.sidebar-chart-legend-dot {
-  @apply size-1.5 shrink-0 rounded-full;
-}
-
-/* 暂停只在指到这一行时露出来；已暂停时常驻，否则没法恢复 */
-.sidebar-chart-pause {
-  @apply flex size-4 flex-none items-center justify-center rounded transition-opacity duration-150 outline-none;
-  color: color-mix(in srgb, var(--color-base-content) 45%, transparent);
-}
-
-@media (hover: hover) {
-  .sidebar-chart-pause {
-    @apply opacity-0;
-  }
-
-  .sidebar-chart-row:hover .sidebar-chart-pause {
-    @apply opacity-100;
-  }
-
-  .sidebar-chart-pause:hover {
-    color: var(--color-base-content);
-  }
-}
-
-.sidebar-chart-pause:focus-visible,
-.sidebar-chart-pause[aria-pressed='true'] {
-  @apply opacity-100;
-}
-
-/* ---------- 设置页 ---------- */
 
 .settings-section-label {
   @apply px-1 pt-5 pb-2 text-xs tracking-wider uppercase first:pt-2;
@@ -209,11 +89,6 @@
   &:last-child {
     border-bottom: none;
   }
-  /*
-   * 允许收缩换行：控件（daisyUI 的 .toggle 等）自带 flex-shrink: 0，标签若也不收缩，
-   * 长文案会把整行撑成 max-content，控件被 .settings-grid 的 overflow-hidden 裁掉。
-   * 需要标签独占一行的场景（配合 flex-1 输入框）在用处显式写 shrink-0!。
-   */
   .setting-item-label {
     @apply min-w-0 grow text-sm;
     svg {
@@ -229,12 +104,4 @@
 }
 .settings-dependent-item {
   @apply bg-base-200/25 pl-7;
-}
-
-/* 编辑模式下：已隐藏的设置项整体置灰，仅保留 +/- 控制可交互 */
-.setting-item:has(> .vis-toggle[data-hidden='true']) > :not(.vis-toggle) {
-  @apply pointer-events-none opacity-40;
-}
-.settings-category--hidden > .settings-category-body {
-  @apply pointer-events-none opacity-40;
 }

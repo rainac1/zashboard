@@ -1,5 +1,5 @@
+import { useStorage } from '@/composables/use-storage'
 import type { TailscaleEndpointStatus, TailscalePeer } from '@/gen/daemon/started_service_pb'
-import { useStorage } from '@/helper/storage'
 
 export interface TailscaleSSHPrefs {
   username: string

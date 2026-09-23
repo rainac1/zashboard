@@ -1,9 +1,5 @@
 <template>
   <div :class="wrapperClass">
-    <!--
-      展开时 CommonCtrl 里已经有一个整行的切换器了,这里不再重复;
-      折叠成一列图标时它是唯一能看到后端状态、能切换后端的入口。
-    -->
     <BackendSwitch
       v-if="vertical"
       compact

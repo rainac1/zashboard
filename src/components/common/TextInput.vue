@@ -83,7 +83,7 @@
 </template>
 
 <script lang="ts" setup>
-import { useFloatingMenu } from '@/composables/floatingMenu'
+import { useFloatingMenu } from '@/composables/use-floating-menu'
 import { CheckIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import { nextTick, onMounted, ref, useId, watch } from 'vue'
 

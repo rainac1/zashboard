@@ -1,6 +1,8 @@
+export * from './dae'
 import type { Connection as SingboxConnectionRawMessage } from '@/gen/daemon/started_service_pb'
+import type { DaeConnectionRawMessage } from './dae'
 
-export type BackendType = 'clash' | 'singbox'
+export type BackendType = 'clash' | 'dae' | 'singbox'
 
 export type Backend = {
   // 后端登录类型:'clash' 走 Clash REST/WS API,'singbox' 走 sing-box API(gRPC)。
@@ -9,8 +11,8 @@ export type Backend = {
   protocol: string
   host: string
   port: string
-  secondaryPath: string // 仅 clash
-  password: string // 通用:Clash secret / sing-box gRPC Bearer token
+  secondaryPath: string // clash REST 路径;sing-box 走顶层 host/port
+  password: string // 通用:Clash secret / dae 密码 / sing-box gRPC Bearer token
   uuid: string
   label?: string
   disableUpgradeCore?: boolean // 仅 clash
@@ -42,6 +44,7 @@ export type History = {
 }[]
 
 export type Proxy = {
+  id?: string
   name: string
   type: string
   history: History
@@ -74,6 +77,7 @@ export type SubscriptionInfo = {
 
 export type ProxyProvider = {
   subscriptionInfo?: SubscriptionInfo
+  id?: string
   name: string
   proxies: Proxy[]
   testUrl: string
@@ -87,9 +91,7 @@ export type Rule = {
   proxy: string
   size: number
   uuid: string
-  // sing-box-reFind
   disabled?: boolean
-  // mihomo
   index: number
   extra?: {
     disabled: false
@@ -147,7 +149,8 @@ export type ClashConnectionRawMessage = {
   }
 }
 
-export type ConnectionRawMessage = ClashConnectionRawMessage | SingboxConnectionRawMessage
+export type ConnectionRawMessage =
+  ClashConnectionRawMessage | DaeConnectionRawMessage | SingboxConnectionRawMessage
 
 export type Connection = ConnectionRawMessage & {
   downloadSpeed: number
@@ -188,17 +191,12 @@ export type SourceIPLabel = {
   scope?: string[]
 }
 
-// smart core
 export interface NodeRank {
   Name: string
   Rank: string
   Weight: number
 }
 
-// honk core —— GET /stats 的用户态运行时快照。
-// 该端点还会返回就绪池 / warm 资源 / TCP / Score / UDP-NFQUEUE 等内部计量
-// (完整 schema 见 honk 仓库 doc/en/reference/api.md 的「GET /stats」一节),
-// 面板只取其中的出站统计,故这里只声明用得到的部分。
 export type HonkStats = {
   outbounds: {
     name: string

@@ -42,6 +42,7 @@
 </template>
 
 <script setup lang="ts">
+import { proxiesTabShow } from '@/store/proxies'
 import VirtualColumn from '@/components/common/VirtualColumn.vue'
 import ProxiesCtrl from '@/components/controls/ProxiesCtrl'
 import FolderManagerPanel from '@/components/proxies/folders/FolderManagerPanel.vue'
@@ -50,14 +51,13 @@ import ProxyGroup from '@/components/proxies/ProxyGroup.vue'
 import ProxyGroupForMobile from '@/components/proxies/ProxyGroupForMobile.vue'
 import ProxyProvider from '@/components/proxies/ProxyProvider.vue'
 import ProxyGroupChainModal from '@/components/proxies/ProxyGroupChainModal.vue'
-import { usePaddingForViews } from '@/composables/paddingViews'
-import { disableProxiesPageScroll, renderProxiesPageItems } from '@/composables/proxies'
+import { usePaddingForViews } from '@/composables/use-padding-for-views'
+import { disableProxiesPageScroll, renderProxiesPageItems } from '@/helper/proxies'
 import { PROXY_TAB_TYPE } from '@/constant'
 import { isMiddleScreen } from '@/helper/utils'
 import { fetchProxies } from '@/assembly/proxies'
-import { proxiesTabShow } from '@/assembly/proxies'
 import { disableProxiesPageTextSelect, twoColumnProxyGroup } from '@/store/settings'
-import { folderManagerOpen, isProxyFolderModeActive } from '@/store/proxyFolders'
+import { folderManagerOpen, isProxyFolderModeActive } from '@/store/proxy-folders'
 import { useResizeObserver, useSessionStorage } from '@vueuse/core'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
@@ -103,27 +103,12 @@ const handleScroll = () => {
   syncScrollMargin()
 }
 
-/*
- * 卡片列上面还有控制栏(桌面端 sticky,占着流内高度)和文件夹栏,虚拟列表得知道
- * 自己从滚动内容的哪个位置开始,否则算出来的可视区会整体偏移一个控制栏的高度。
- *
- * 滚动容器是 relative,列的 offsetParent 就是它,offsetTop 直接就是这个偏移;
- * 它只在控制栏高度 / 内边距变化时才会变,所以跟着滚动、resize 和几个布局开关同步就够了。
- */
 const columnsRef = ref<HTMLElement | null>(null)
 const scrollMargin = ref(0)
 const syncScrollMargin = () => {
   scrollMargin.value = columnsRef.value?.offsetTop ?? 0
 }
 
-/*
- * scrollTop 在虚拟列表里不是稳定坐标:锚点前面的卡片从估算高度换成实测高度时,同一个
- * scrollTop 会指向别的内容。这里为两个代理标签分别保存「视口顶部的卡片 + 卡片相对视口
- * 的偏移」,恢复时先让所属虚拟列挂载该卡片,再用真实 DOM 位置瞬时校准。
- *
- * 恢复期间忽略 scroll 事件,否则旧列表被新列表替换时产生的那一下滚动会覆盖新标签保存的
- * 锚点。旧版本存下来的数字仍作为一次性的兼容回退；锚点不存在时也用 scrollTop 尽量恢复。
- */
 const SCROLL_RESTORE_TIMEOUT = 1000
 let restoreFrame = 0
 let restoreToken = 0
@@ -219,7 +204,6 @@ const restoreScrollPosition = (tab = proxiesTabShow.value) => {
       }
     }
 
-    // 兼容旧的纯数字记录,也处理锚点已被过滤或删除的情况。
     proxiesEl.scrollTop = Math.min(
       fallbackTop,
       Math.max(0, proxiesEl.scrollHeight - proxiesEl.clientHeight),
@@ -286,7 +270,6 @@ const renderComponent = computed(() => {
   return ProxyGroup
 })
 
-// 三种卡片折叠态的高度不同,估算高度与量到的高度缓存都按形态分开
 const cardVariant = computed(() => `${cardType.value}:${displayTwoColumns.value ? 2 : 1}`)
 const estimatedCardHeight = computed(() => (cardType.value === 'mobile' ? 88 : 112))
 
@@ -305,7 +288,6 @@ const filterContent: <T>(all: T[], target: number) => T[] = (all, target) => {
   return all.filter((_, index: number) => index % 2 === target)
 }
 
-// 双列不是 masonry,还是按 index % 2 分成两条独立的列,各自一个 virtualizer 共用页面的滚动条
 const columns = computed(() =>
   displayTwoColumns.value
     ? [filterContent(renderPageItems.value, 0), filterContent(renderPageItems.value, 1)]

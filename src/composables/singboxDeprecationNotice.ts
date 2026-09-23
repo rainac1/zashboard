@@ -1,6 +1,6 @@
 import { can } from '@/assembly/backend'
-import { showConfirmDialog } from '@/helper/confirmDialog'
-import { useStorage } from '@/helper/storage'
+import { useStorage } from '@/composables/use-storage'
+import { showConfirmDialog } from '@/helper/confirm-dialog'
 import { i18n } from '@/i18n'
 import { watchEffect } from 'vue'
 

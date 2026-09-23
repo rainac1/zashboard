@@ -22,9 +22,7 @@ const ensureResponseOK = (response: Response, service: string) => {
   }
 }
 
-// china
 export const getIPFromIpipnetAPI = async () => {
-  // Cache-busting query parameters make ipip.net's uncached response omit its CORS header.
   const response = await fetch('https://myip.ipip.net/json', { cache: 'no-store' })
   ensureResponseOK(response, IP_INFO_API.IPIP)
 
@@ -37,7 +35,6 @@ export const getIPFromIpipnetAPI = async () => {
   }
 }
 
-// global
 export const getIPFromIpsbAPI = async (ip = '') => {
   const response = await fetch('https://api.ip.sb/geoip' + (ip ? `/${ip}` : ''), {
     cache: 'no-store',
@@ -90,7 +87,6 @@ const getIPFromIPapiisAPI = async (ip = '') => {
   })
   ensureResponseOK(response, IP_INFO_API.IPAPI)
 
-  // Requests without an API key always use ipapi.is's minimal flat schema.
   return (await response.json()) as
     | {
         ip: string
@@ -134,7 +130,6 @@ export const getIPInfo = async (ip = '', api: IP_INFO_API = IPInfoAPI.value): Pr
     case IP_INFO_API.IPAPI:
       const ipapi = await getIPFromIPapiisAPI(ip)
 
-      // ipapi.is reports invalid queries with HTTP 200 and an error field.
       if ('error' in ipapi) {
         throw new Error(`ipapi.is lookup failed: ${ipapi.error}`)
       }

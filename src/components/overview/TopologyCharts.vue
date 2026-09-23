@@ -95,13 +95,14 @@
 </template>
 
 <script setup lang="ts">
-import { escapeChartHtml } from '@/components/charts/chartTooltip'
-import { useChartTheme, useEChart, type EChartOption } from '@/composables/useEChart'
+import { activeConnections } from '@/assembly/connections'
+import { escapeChartHtml } from '@/components/charts/chart-tooltip'
+import { useChartTheme, useEChart, type EChartOption } from '@/composables/use-echart'
 import { getConnectionChains, getConnectionRule, getConnectionSourceIP } from '@/helper'
 import { backgroundImage } from '@/helper/indexeddb'
-import { getIPLabelFromMap } from '@/helper/sourceip'
+import { getIPLabelFromMap } from '@/helper/source-ip'
 import { isMiddleScreen } from '@/helper/utils'
-import { activeConnections, filteredActiveConnections } from '@/store/connections'
+import { filteredActiveConnections } from '@/store/connections'
 import { topologyApplyConnectionFilter } from '@/store/settings'
 import {
   ArrowsPointingInIcon,
@@ -133,6 +134,7 @@ const chartSurfaceStyle = computed<CSSProperties>(() => {
 
   const style: CSSProperties = {
     backdropFilter: 'var(--app-glass, none)',
+    WebkitBackdropFilter: 'var(--app-glass, none)',
     height: '100%',
     width: '100%',
   }

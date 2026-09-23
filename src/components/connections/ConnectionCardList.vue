@@ -47,7 +47,7 @@ import {
   resetConnectionCardGroups,
   syncConnectionCardGroupIds,
   toggleConnectionCardGroup,
-} from '@/composables/connectionCardGroups'
+} from '@/helper/connection-card-groups'
 import type { ConnectionGroupableKey } from '@/constant'
 import { connectionCardGroupKey, connectionTabShow, renderConnections } from '@/store/connections'
 import { connectionCardLines, proxyChainDirection, showFullProxyChain } from '@/store/settings'
@@ -83,7 +83,6 @@ type ConnectionGroup = Omit<ConnectionCardGroupItem, 'type' | 'count' | 'expande
 const { t } = useI18n()
 
 const displayOptions = computed(() => ({
-  // 分组值必须与桌面表格 accessorFn 完全一致，不能使用卡片的代理链截断语义。
   mode: 'table' as const,
   proxyChainDirection: proxyChainDirection.value,
   showFullProxyChain: showFullProxyChain.value,
@@ -109,7 +108,6 @@ const groups = computed<ConnectionGroup[]>(() => {
     }
   }
 
-  // Map 保留首次插入顺序，因此组顺序就是该组在已过滤、已排序连接中的首次出现位置。
   return [...byValue.values()]
 })
 
@@ -146,7 +144,6 @@ const listItems = computed<ConnectionCardListItem[]>(() => {
   })
 })
 
-// 新分组默认折叠。
 watch([connectionCardGroupKey, connectionTabShow, activeUuid], resetConnectionCardGroups, {
   flush: 'sync',
 })
@@ -156,7 +153,6 @@ watch(groups, (nextGroups) => syncConnectionCardGroupIds(nextGroups.map((group) 
 
 const getItemKey = (item: unknown) => (item as ConnectionCardListItem).id
 const size = computed(() => {
-  // +8 是行与行之间的间距，算进估算值可以少一轮测量回跳；组头会在可见时实测。
   return connectionCardLines.value.length * 28 + 12
 })
 </script>

@@ -1,45 +1,29 @@
 import * as THREE from 'three/webgpu'
-import { ARC_SEGMENTS, createGreatCircle, EARTH_RADIUS, toEarthVector } from './earthMath'
+import { ARC_SEGMENTS, createGreatCircle, EARTH_RADIUS, toEarthVector } from './earth-math'
 import type { EarthLocation, EarthSample } from './types'
 
 export type EarthProjection = '3d' | '2d'
 
 export interface EarthView {
   projection: EarthProjection
-  // Geography is expressed relative to this longitude, which puts the user in the
-  // middle of the flat map. The sphere's seam — and so the map's left and right
-  // edges — lands on its antipode, and `globeLayer` cancels the shift out again
-  // when it samples the textures.
   centerLongitude: number
 }
 
 export const wrapLongitude = (degrees: number) => ((((degrees + 180) % 360) + 360) % 360) - 180
 
-// A 2:1 equirectangular plane whose vertical extent matches the sphere's radius,
-// so switching projections keeps the subject roughly the same size on screen.
 export const PLANE_HALF_WIDTH = 2
 export const PLANE_HALF_HEIGHT = 1
-// The map imagery carries an extra half-world on each side, so panning and wide
-// viewports meet continuing geography instead of a hard edge. Only the imagery is
-// extended: arcs, beads and labels stay in the central world.
 export const PLANE_EDGE_EXTENSION = PLANE_HALF_WIDTH
-// Altitude above the sphere's surface becomes a lift towards the camera, which
-// keeps arcs and endpoint beads stacked above the map instead of z-fighting it.
 export const PLANE_ALTITUDE_SCALE = 2.5
 
-// How far an arc bows away from its chord, as a fraction of the chord's length.
 const PLANE_ARC_BULGE = 0.14
 const PLANE_ARC_MAX_BULGE = 0.45
-// Just enough to clear the map plane along the whole arc.
 const PLANE_ARC_BASE_LIFT = 0.006
 const PLANE_ARC_PEAK_LIFT = 0.02
 
 const spherePosition = new THREE.Vector3()
 const planePosition = new THREE.Vector3()
 
-// The single source of truth for where a geographic sample lands. `globeLayer`
-// mirrors the plane half of this formula in TSL so the mesh and the overlays
-// unroll onto exactly the same rectangle.
 export const projectEarthSample = (
   sample: EarthSample,
   morph: number,
@@ -64,8 +48,6 @@ export const projectionMorph = (projection: EarthProjection) => (projection === 
 
 type ArcEnd = Pick<EarthLocation, 'latitude' | 'longitude'>
 
-// Everything downstream of this works in the view's local frame, so the centring
-// is applied exactly once, here.
 export const toLocalSample = (
   location: ArcEnd,
   altitude: number,
@@ -76,11 +58,6 @@ export const toLocalSample = (
   altitude,
 })
 
-// A great circle is the right path on a globe, but projecting one onto the flat
-// map routes China->US over the Pacific, straight off the edge of the projection,
-// where it can only be drawn as two disconnected halves. The map therefore lays
-// its arcs out directly in map space: the line stays unbroken, at the cost of
-// bowing the long way round rather than following the true shortest path.
 const createPlaneArc = (from: EarthSample, to: EarthSample) => {
   const start = projectEarthSample(from, 1)
   const end = projectEarthSample(to, 1)
@@ -88,8 +65,6 @@ const createPlaneArc = (from: EarthSample, to: EarthSample) => {
   const chordY = end.y - start.y
   const chordLength = Math.hypot(chordX, chordY)
   const bulge = Math.min(PLANE_ARC_MAX_BULGE, chordLength * PLANE_ARC_BULGE)
-  // The chord turned by a quarter turn, flipped so every arc bows the same way
-  // no matter which direction the route runs.
   const scale = chordLength || 1
   const normalX = -chordY / scale
   const normalY = chordX / scale

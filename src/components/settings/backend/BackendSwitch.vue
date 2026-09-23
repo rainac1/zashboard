@@ -1,22 +1,5 @@
-<!--
-  纯粹的后端切换器。以前它是「切换 + 编辑 + 新增」三合一,而且那个齿轮图标按钮
-  实际做的是「清空 activeUuid 再跳 setup 页」—— 想加一个后端得先把自己登出。
-  现在增删改统一进 BackendManager,这里只管选一个后端。
-
-  用弹出列表而不是原生 select:每一项要带上「此刻通不通、多少延迟」,
-  切过去之前就知道结果,而不是切完看着空页面才发现。
-
-  列表 teleport 到 #app-content 并按触发器的位置定位,而不是用 CSS 下拉:
-  两个挂载点(侧边栏底部、设置面板)都在滚动容器里,绝对定位的菜单会被裁掉 ——
-  原生 select 不会,是因为它画在浏览器的顶层。这里靠 teleport 补回这一点,
-  空间不够时向上翻。
--->
 <template>
   <div :class="compact ? 'flex-none' : 'w-full'">
-    <!--
-      折叠的侧边栏只剩一列图标,状态就不在这儿表了:一列小按钮里再挤进一个状态点
-      (或者给图标上色)只是噪声,想知道通不通展开列表就有。这里只保留入口和名字。
-    -->
     <button
       v-if="compact"
       ref="triggerRef"
@@ -60,7 +43,7 @@
         <div
           v-if="isOpen"
           ref="panelRef"
-          class="border-base-border bg-base-100 fixed z-[998] flex flex-col gap-1 overflow-hidden rounded-lg border p-1 shadow-lg"
+          class="border-base-border bg-base-100 overlay-glass fixed z-[998] flex flex-col gap-1 overflow-hidden rounded-lg border p-1 shadow-lg backdrop-blur-sm"
           :style="panelStyle"
         >
           <div
@@ -121,15 +104,11 @@
         </div>
       </Transition>
 
-      <!--
-        二级菜单单独 teleport 一层,而不是塞进一级面板里:一级面板自己是 fixed
-        且带 overflow,嵌在里面的横向展开会被它自己裁掉。
-      -->
       <Transition name="backend-switch">
         <div
           v-if="isOpen && isActionsOpen"
           ref="actionsPanelRef"
-          class="border-base-border bg-base-100 fixed z-[998] flex flex-col gap-1 overflow-y-auto rounded-lg border p-1 shadow-lg"
+          class="border-base-border bg-base-100 overlay-glass fixed z-[998] flex flex-col gap-1 overflow-y-auto rounded-lg border p-1 shadow-lg backdrop-blur-sm"
           :style="actionsPanelStyle"
         >
           <button
@@ -158,9 +137,9 @@
 
 <script setup lang="ts">
 import BackendStatusDot from '@/components/common/BackendStatusDot.vue'
-import { menuBackendActions, type BackendAction } from '@/composables/backendActions'
-import { useBackendListProbe } from '@/composables/backendListProbe'
-import { useTooltip } from '@/helper/tooltip'
+import { menuBackendActions, type BackendAction } from '@/helper/backend-actions'
+import { useBackendListProbe } from '@/composables/use-backend-list-probe'
+import { useTooltip } from '@/composables/use-tooltip'
 import { getLabelFromBackend } from '@/helper/utils'
 import {
   activeBackend,
@@ -186,7 +165,6 @@ const VIEWPORT_PADDING = 8
 const props = withDefaults(
   defineProps<{
     compact?: boolean
-    /** 设置页里这些动作本来就成排摆着,菜单里不必再来一遍 */
     showActions?: boolean
   }>(),
   { compact: false, showActions: true },
@@ -204,14 +182,10 @@ const actionsPanelStyle = ref<CSSProperties>({})
 
 const menuActions = computed(() => (props.showActions ? menuBackendActions.value : []))
 
-// Teleport 的目标是挂载本组件的 #app-content,首帧还不在 DOM 里。
 const isReady = ref(false)
 
-// 只在展开时探测,收起就停 —— 侧边栏常驻,不该一直在后台打请求。
 const { stateOf } = useBackendListProbe(isOpen)
 
-// 当前后端的状态不依赖展开:stateOf 会优先用会话自己的探测结果(backendProbe),
-// 所以展开态那个点一亮出来就是准的,不用等这一轮探测跑完。
 const activeState = computed(() => stateOf.value(activeUuid.value || ''))
 
 const { showTip } = useTooltip()
@@ -235,7 +209,6 @@ const updatePosition = () => {
   const spaceBelow = window.innerHeight - rect.bottom - GAP - VIEWPORT_PADDING
   const spaceAbove = rect.top - GAP - VIEWPORT_PADDING
 
-  // 侧边栏里的切换器贴着底边,向下几乎没有空间 —— 哪边宽敞往哪边开。
   const dropUp = spaceBelow < 160 && spaceAbove > spaceBelow
 
   panelStyle.value = {
@@ -248,7 +221,6 @@ const updatePosition = () => {
   }
 }
 
-// 二级菜单挂在触发行的右侧(右边挤不下就翻到左边),纵向跟触发行齐平并夹在视口内。
 const updateActionsPosition = () => {
   const anchor = actionsTriggerRef.value
 
@@ -280,8 +252,6 @@ const updateActionsPosition = () => {
   }
 }
 
-// 一级面板的位置一变,挂在它上面的二级菜单也得跟着走 —— 但要等这一帧渲染完,
-// 触发行的新坐标才量得到。
 const updatePositions = () => {
   updatePosition()
   if (isActionsOpen.value) nextTick(updateActionsPosition)
@@ -294,7 +264,6 @@ const closeActions = () => {
 const openActions = () => {
   if (!menuActions.value.length || isActionsOpen.value) return
 
-  // 首帧还量不到面板自己的宽高,先按下限摆一次,渲染完再按实际尺寸收边。
   updateActionsPosition()
   isActionsOpen.value = true
   nextTick(updateActionsPosition)
@@ -302,8 +271,6 @@ const openActions = () => {
 
 const toggleActions = () => (isActionsOpen.value ? closeActions() : openActions())
 
-// 触屏上点一下会先补一发 pointerenter 再来 click:两个都当成切换,菜单会刚展开就被收回去。
-// 悬停展开只对鼠标生效,触屏走 click。
 const hoverOpenActions = (event: PointerEvent) => {
   if (event.pointerType !== 'mouse') return
   openActions()
@@ -313,7 +280,6 @@ const runAction = (action: BackendAction) => {
   if (action.running) return
 
   action.run()
-  // 要填参数的动作交给弹窗,菜单让位;就地执行的留着 —— 转圈看得见,也能接着点下一个。
   if (action.opensModal) close()
 }
 
@@ -335,7 +301,6 @@ const handleKeydown = (event: KeyboardEvent) => {
   if (event.key === 'Escape') close()
 }
 
-// 滚动的是外层容器而不是面板自己,所以用捕获阶段听,跟着触发器走。
 const listen = (add: boolean) => {
   const fn = add ? window.addEventListener : window.removeEventListener
 

@@ -32,9 +32,9 @@
 </template>
 
 <script setup lang="ts">
-import { openProxyGroupChain } from '@/composables/proxyGroupChain'
+import { openProxyGroupChain } from '@/helper/proxy-group-chain'
 import { PROXY_TYPE } from '@/constant'
-import { useTooltip } from '@/helper/tooltip'
+import { useTooltip } from '@/composables/use-tooltip'
 import { getNowProxyNodeName, proxyGroupList, proxyMap } from '@/assembly/proxies'
 import { displayFinalOutbound } from '@/store/settings'
 import { ArrowRightCircleIcon, CheckCircleIcon, LockClosedIcon } from '@heroicons/vue/24/outline'

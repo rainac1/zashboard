@@ -33,7 +33,7 @@
 
 <script setup lang="ts">
 import { proxyGroupLatencyTest, proxyMap } from '@/assembly/proxies'
-import { useRenderProxyList } from '@/composables/renderProxies'
+import { useRenderProxyList } from '@/composables/use-render-proxy-list'
 import { isMiddleScreen } from '@/helper/utils'
 import { groupProxiesByProvider } from '@/store/settings'
 import { computed, ref } from 'vue'

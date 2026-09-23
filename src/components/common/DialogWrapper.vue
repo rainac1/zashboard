@@ -1,9 +1,5 @@
 <template>
   <Teleport to="#app-content">
-    <!--
-      :duration 必须显式给：Vue 只测量根元素上的 transition，而移动端抽屉的滑入
-      (0.35s) 比遮罩淡出 (0.25s) 长，自动推断会在 0.25s 就掐断离场动画。
-    -->
     <Transition
       name="modal"
       :duration="350"
@@ -14,24 +10,22 @@
         ref="backdropRef"
         class="modal"
         :class="{ 'modal-open': isPresenting }"
+        :style="backdropSwipeStyle"
         role="dialog"
         aria-modal="true"
         :aria-labelledby="title ? 'dialog-title' : undefined"
         @keydown.escape="close"
       >
-        <!-- 遮罩层，点击关闭 -->
         <div
           class="modal-backdrop w-screen"
           aria-hidden="true"
-          :style="backdropSwipeStyle"
           @click="close"
         />
 
-        <!-- 弹层内容，阻止点击穿透 -->
         <div
           ref="modalBoxRef"
           class="modal-box bg-base-100 relative flex flex-col overflow-hidden p-0 outline-none max-md:max-h-[85dvh] max-md:min-h-[40dvh]"
-          :class="[blurIntensity < 5 && 'backdrop-blur-sm!', boxClass]"
+          :class="boxClass"
           :style="boxSwipeStyle"
           tabindex="-1"
           @click.stop
@@ -58,14 +52,6 @@
               <XMarkIcon class="h-4 w-4" />
             </button>
           </div>
-          <!--
-            高度区间在移动端由 .modal-box 统一约束（见上面的 max-h-[85dvh] / min-h-[40dvh]），
-            这里只负责吃掉剩余空间；桌面端维持原本加在滚动容器上的 90dvh 不变。
-            软键盘弹起时 dvh 会跟着 layout viewport 一起收缩（见 index.html 的
-            interactive-widget=resizes-content），所以上下限都不会撑破可视高度。
-            safe-area 补在滚动容器的 padding 上而不是 .modal-box 上，这样最后一条内容能
-            滚到 home indicator 上方，抽屉背景仍然铺满到屏幕物理下缘。
-          -->
           <div
             v-if="isOpen"
             class="min-h-0 overflow-y-auto max-md:flex-1 md:max-h-[90dvh]"
@@ -84,8 +70,7 @@
 </template>
 
 <script setup lang="ts">
-import { useDialogOpenState } from '@/composables/dialog'
-import { blurIntensity } from '@/store/settings'
+import { useDialogOpenState } from '@/composables/use-dialog-state'
 import { XMarkIcon } from '@heroicons/vue/24/outline'
 import { computed, ref, watch, type CSSProperties } from 'vue'
 
@@ -94,7 +79,8 @@ const DIRECTION_LOCK_DISTANCE = 10
 const VERTICAL_DOMINANCE_RATIO = 1.2
 const MIN_FLING_DISTANCE = 48
 const CLOSE_VELOCITY = 0.5
-const SWIPE_TRANSITION = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)'
+const SWIPE_TRANSITION = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.25s ease-out'
+const SETTLE_TIMEOUT = 450
 
 type SwipeState = 'idle' | 'pending' | 'dragging' | 'settling' | 'dismissing' | 'rejected'
 
@@ -117,6 +103,7 @@ let startX = 0
 let startY = 0
 let startTime = 0
 let endY = 0
+let settleTimer: ReturnType<typeof setTimeout> | undefined
 
 const swipeProgress = computed(() => {
   const height = modalBoxRef.value?.offsetHeight || 1
@@ -147,25 +134,13 @@ const backdropSwipeStyle = computed<CSSProperties | undefined>(() => {
     return
 
   return {
-    opacity: 1 - swipeProgress.value,
-    transition: swipeAnimating.value ? 'opacity 0.25s ease-out' : 'none',
+    backgroundColor: `oklch(0% 0 0 / ${0.4 * (1 - swipeProgress.value)})`,
+    transition: swipeAnimating.value ? 'background-color 0.25s ease-out' : 'none',
   }
 })
 
-// 记账「当前有几个弹窗打开着」，并在打开期间跟踪可视视口高度（软键盘）。
 useDialogOpenState(isOpen)
 
-/*
- * .modal-open 只在弹窗「在场」期间挂着：打开时立刻加上，离场动画跑完才摘掉。
- *
- * 不能直接用静态 class —— 弹窗是 v-show 收起的，元素始终留在 DOM 里，而 daisyUI 的
- * :root:has(.modal-open) 整页滚动锁（base/rootscrolllock.css）不看 display，常挂的
- * .modal-open 会让 <html> 永久 overflow: hidden，移动端浏览器的原生下拉刷新就再也
- * 触发不了（「禁用下拉刷新」只管 body，关掉也没用，见 App.vue）。
- *
- * 也不能直接绑 isOpen：daisyUI 的 .modal 基础态是 visibility: hidden + opacity: 0，
- * 关闭瞬间摘掉 .modal-open，离场动画会被一帧掐断。所以摘除推迟到 after-leave。
- */
 const isPresenting = ref(!!isOpen.value)
 
 const onAfterLeave = () => {
@@ -181,7 +156,6 @@ watch(isOpen, (val) => {
       modalBoxRef.value?.focus()
     })
   } else if (swipeState.value !== 'dismissing') {
-    // 通过按钮、遮罩或父组件关闭时，清掉可能尚未结束的回弹状态，交还给标准离场动画。
     resetSwipe()
   }
 })
@@ -197,8 +171,6 @@ function isAtTopOfScrollableAncestors(target: EventTarget | null) {
         (overflowY === 'auto' || overflowY === 'scroll') &&
         element.scrollHeight > element.clientHeight
 
-      // 一旦触点所在的任意滚动层还有内容可向上回滚，就把整次手势留给原生滚动。
-      // 即使它在本次手势中途滚到顶部，也不接管，避免内容突然变成拖动弹窗。
       if (isScrollable && element.scrollTop > 0) return false
     }
     element = element.parentElement
@@ -212,6 +184,7 @@ function onTouchStart(event: TouchEvent) {
     settleSwipe()
     return
   }
+  if (swipeState.value === 'settling') resetSwipe()
   if (swipeState.value !== 'idle') return
 
   if (
@@ -258,7 +231,6 @@ function onTouchMove(event: TouchEvent) {
 
   if (swipeState.value !== 'dragging') return
 
-  // 只有方向锁定为「向下关闭」之后才阻止默认行为；正常的纵向滚动不受影响。
   event.preventDefault()
   swipeOffset.value = Math.max(deltaY, 0)
 }
@@ -312,7 +284,7 @@ function onTouchCancel() {
 }
 
 function settleSwipe() {
-  if (prefersReducedMotion()) {
+  if (prefersReducedMotion() || swipeOffset.value === 0) {
     resetSwipe()
     return
   }
@@ -320,6 +292,7 @@ function settleSwipe() {
   swipeState.value = 'settling'
   swipeAnimating.value = true
   swipeOffset.value = 0
+  settleTimer = setTimeout(resetSwipe, SETTLE_TIMEOUT)
 }
 
 function onBoxTransitionEnd(event: TransitionEvent) {
@@ -327,6 +300,8 @@ function onBoxTransitionEnd(event: TransitionEvent) {
 }
 
 function resetSwipe() {
+  clearTimeout(settleTimer)
+  settleTimer = undefined
   swipeState.value = 'idle'
   swipeOffset.value = 0
   swipeAnimating.value = false
@@ -345,33 +320,31 @@ function enter() {
 </script>
 
 <style scoped>
-/*
- * 动效按项目约定本该集中在 assets/styles/utilities/motion.css，这里是有意保留的例外
- * （motion.css 文件头有对应说明）：过渡类和模板耦合紧，拆开反而更难改。
- * 曲线沿用项目统一的 cubic-bezier(0.32, 0.72, 0, 1)。
- */
+.modal {
+  opacity: 1;
+}
 
-/* 遮罩淡入淡出 */
 .modal-enter-active,
 .modal-leave-active {
-  transition: opacity 0.25s ease-out;
+  transition: background-color 0.25s ease-out;
 }
 .modal-enter-from,
 .modal-leave-to {
-  opacity: 0;
+  background-color: transparent;
 }
 
-/* 桌面端居中卡片：缩放淡入 */
 .modal-enter-active .modal-box,
 .modal-leave-active .modal-box {
-  transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+  transition:
+    transform 0.35s cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 0.25s ease-out;
 }
 .modal-enter-from .modal-box,
 .modal-leave-to .modal-box {
+  opacity: 0;
   transform: scale(0.95);
 }
 
-/* 移动端底部抽屉：从屏幕下缘滑入，时长与曲线和路由切换保持一致 */
 @media (width < 48rem) {
   .modal-enter-from .modal-box,
   .modal-leave-to .modal-box {
@@ -379,7 +352,6 @@ function enter() {
   }
 }
 
-/* 降级为纯淡入淡出：去掉位移与缩放，保留 opacity 以免弹窗瞬间闪现/残留 */
 @media (prefers-reduced-motion: reduce) {
   .modal-enter-active .modal-box,
   .modal-leave-active .modal-box {

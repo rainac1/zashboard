@@ -83,10 +83,10 @@
 </template>
 
 <script lang="ts" setup>
-import { queryDNSAPI } from '@/assembly/config'
+import { queryDNS } from '@/assembly/config'
 import { getIPInfo, type IPInfo } from '@/api/geoip'
-import { notifyRequestError } from '@/helper/requestError'
-import { useStorage } from '@/helper/storage'
+import { notifyRequestError } from '@/helper/request-error'
+import { useStorage } from '@/composables/use-storage'
 import type { DNSQuery } from '@/types'
 import { MagnifyingGlassIcon, MapPinIcon, ServerIcon } from '@heroicons/vue/24/outline'
 import { reactive, ref } from 'vue'
@@ -128,7 +128,7 @@ const query = async () => {
   saveQueryName(form.name)
 
   try {
-    const { data } = await queryDNSAPI(form)
+    const data = await queryDNS(form)
 
     resultList.value = data.Answer
 

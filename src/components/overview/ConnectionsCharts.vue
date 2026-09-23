@@ -10,10 +10,10 @@
 </template>
 
 <script setup lang="ts">
+import { connectionsHistory, timeSaved } from '@/assembly/overview'
 import TimeSeriesChart from '@/components/charts/TimeSeriesChart.vue'
-import { formatTimeSeriesTooltipParam } from '@/components/charts/chartTooltip'
-import type { ChartTooltipParam } from '@/components/charts/chartTypes'
-import { connectionsHistory, timeSaved } from '@/store/overview'
+import { formatTimeSeriesTooltipParam } from '@/components/charts/chart-tooltip'
+import type { ChartTooltipParam } from '@/components/charts/chart-types'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 

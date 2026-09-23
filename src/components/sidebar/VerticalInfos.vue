@@ -1,6 +1,6 @@
 <template>
   <div class="flex flex-col items-center gap-2 px-1.5 pt-1 pb-2">
-    <div class="sidebar-stats-card">
+    <div class="sidebar-stats-card bg-base-100">
       <div
         v-for="item in sidebarStatItems"
         :key="item.key"
@@ -34,8 +34,8 @@
 </template>
 
 <script setup lang="ts">
-import { sidebarStatItems, statTipOf } from '@/composables/sidebarStats'
-import { useTooltip } from '@/helper/tooltip'
+import { sidebarStatItems, statTipOf } from '@/helper/sidebar-stats'
+import { useTooltip } from '@/composables/use-tooltip'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
@@ -43,16 +43,12 @@ const { showTip } = useTooltip()
 </script>
 
 <style scoped>
-/* 折叠态的统计：macOS 的「内嵌分组」——一块带发丝边的圆角面板，行与行之间通铺一条
-   分隔线，数值和单位分两行竖排，60px 宽也不会挤。指标名靠 hover 的 tooltip 补。 */
-
 .sidebar-stats-card {
   display: flex;
   width: 100%;
   flex-direction: column;
   overflow: hidden;
   border-radius: 10px;
-  background-color: var(--color-base-100);
   box-shadow:
     inset 0 0 0 1px color-mix(in srgb, var(--color-base-content) 8%, transparent),
     0 1px 2px color-mix(in srgb, var(--color-base-content) 5%, transparent);
@@ -85,7 +81,6 @@ const { showTip } = useTooltip()
   stroke-width: 1.75;
 }
 
-/* 上下箭头是竖长图形，和 ⇄ / 芯片同尺寸时视觉上会更大，单独收一档 */
 .sidebar-stat-icon-arrow {
   width: 0.75rem;
   height: 0.75rem;

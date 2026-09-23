@@ -1,7 +1,6 @@
 <template>
   <div class="flex w-full flex-col">
     <div class="base-container w-full rounded-b-none!">
-      <!-- Header -->
       <div
         class="flex items-center justify-between p-4 max-sm:flex-col max-sm:items-start max-sm:gap-2"
       >
@@ -20,7 +19,6 @@
             @mouseenter="showTip($event, totalConnectionsTip)"
           />
         </div>
-        <!-- v-memo: avoid re-rendering the selects on every connection poll (flicker on firefox) -->
         <div
           v-memo="[aggregationType, autoCleanupInterval, locale]"
           class="flex items-center gap-2 max-sm:flex-col max-sm:items-start"
@@ -57,7 +55,6 @@
           </div>
         </div>
       </div>
-      <!-- Stats grid -->
       <div class="grid grid-cols-2 gap-3 px-4 pb-4 sm:grid-cols-5">
         <div class="bg-base-200/30 flex flex-col gap-1.5 rounded-xl p-4">
           <div class="text-base-content/60 text-xs font-semibold tracking-wider uppercase">
@@ -97,7 +94,6 @@
         </div>
       </div>
     </div>
-    <!-- VirtualTable 自带独立的 base-container，与上方统计区域保持同级透明层 -->
     <div class="h-96">
       <VirtualTable
         class="m-0! rounded-t-none!"
@@ -136,12 +132,13 @@
 </template>
 
 <script setup lang="ts">
+import { activeConnections } from '@/assembly/connections'
 import { ConnectionHistoryType } from '@/helper/indexeddb'
 import SelectInput from '@/components/common/SelectInput.vue'
 import { showNotification } from '@/helper/notification'
-import { getIPLabelFromMap } from '@/helper/sourceip'
-import { useStorage } from '@/helper/storage'
-import { useTooltip } from '@/helper/tooltip'
+import { getIPLabelFromMap } from '@/helper/source-ip'
+import { useStorage } from '@/composables/use-storage'
+import { useTooltip } from '@/composables/use-tooltip'
 import { prettyBytesHelper } from '@/helper/utils'
 import VirtualTable from '@/components/common/VirtualTable.vue'
 import {
@@ -149,8 +146,7 @@ import {
   aggregatedDataMap,
   clearConnectionHistory,
   mergeAggregatedData,
-} from '@/store/connHistory'
-import { activeConnections } from '@/store/connections'
+} from '@/store/conn-history'
 import { QuestionMarkCircleIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import type { ColumnDef } from '@tanstack/vue-table'
 import dayjs from 'dayjs'
@@ -278,8 +274,6 @@ const autoCleanupInterval = useStorage<AutoCleanupInterval>(
   'config/connection-history-auto-cleanup-interval',
   AutoCleanupInterval.Month,
 )
-// 这是统计起始时间戳,首次访问就要落盘固定下来,否则每次刷新都会被视为"刚开始统计",
-// 自动清理永远不会触发 —— 与其他纯 UI 偏好不同,这里需要保留 writeDefaults
 const startTime = useStorage<number>(
   'cache/connection-history-stats-start-time',
   Date.now(),

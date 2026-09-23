@@ -46,7 +46,7 @@
 </template>
 
 <script setup lang="ts">
-import { useTooltip } from '@/helper/tooltip'
+import { useTooltip } from '@/composables/use-tooltip'
 import { useResizeObserver } from '@vueuse/core'
 import { nextTick, ref, watch, type Component } from 'vue'
 import { RouterLink, type RouteLocationRaw } from 'vue-router'
@@ -55,7 +55,6 @@ export type NavMenuItem = {
   key: string
   label: string
   icon: Component
-  /** 给出则渲染成路由链接，高亮交给 RouterLink；否则是按钮，点击后抛 select。 */
   to?: RouteLocationRaw
 }
 
@@ -86,7 +85,6 @@ const mouseenterHandler = (e: MouseEvent, item: NavMenuItem) => {
   showTip(e, item.label, { placement: 'right' })
 }
 
-/* 路由项的 aria-current 由 RouterLink 自己算，这里多传一个 undefined 会把它覆盖掉。 */
 const bindingOf = (item: NavMenuItem) =>
   item.to
     ? { to: item.to }
@@ -103,7 +101,6 @@ const syncIndicator = () => {
 
   const containerRect = container.getBoundingClientRect()
   const itemRect = activeItem.getBoundingClientRect()
-  // 容器自身可滚动时要补回滚动量，指示器才会跟着内容一起滚。
   const x = itemRect.left - containerRect.left + container.scrollLeft
   const y = itemRect.top - containerRect.top + container.scrollTop
 
@@ -134,8 +131,6 @@ defineExpose({ syncIndicator })
 </script>
 
 <style scoped>
-/* 共用的结构和交互配色在 styles/components/app.css 的 .nav-* 里，这里只写侧栏这一侧。 */
-
 .nav-menu {
   width: 100%;
   flex-direction: column;
@@ -169,7 +164,6 @@ defineExpose({ syncIndicator })
   height: 18px;
 }
 
-/* 侧栏一次只有一个页面在身，滑块做成中性的一块就够，不用抢主色。 */
 .nav-indicator {
   background-color: color-mix(in srgb, var(--color-base-content) 9%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-base-content) 3%, transparent);

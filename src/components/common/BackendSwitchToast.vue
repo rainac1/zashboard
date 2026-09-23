@@ -4,7 +4,6 @@
       v-if="visible && activeBackend"
       class="pointer-events-none fixed inset-x-0 top-0 z-[100001] flex justify-end pt-[calc(0.75rem+env(safe-area-inset-top,0px))] pr-[calc(0.75rem+env(safe-area-inset-right,0px))] pl-3"
     >
-      <!-- 窄屏挤不下多行卡片,压成一行:后端名 + 状态。 -->
       <div
         v-if="isMiddleScreen"
         class="bg-base-100/95 border-base-border pointer-events-auto flex w-full items-center gap-2 rounded-full border py-2 pr-2 pl-3 shadow-lg backdrop-blur"
@@ -99,7 +98,6 @@ import { ArrowsRightLeftIcon, CheckCircleIcon, XMarkIcon } from '@heroicons/vue/
 import { computed, ref, watch } from 'vue'
 import BackendVersion from './BackendVersion.vue'
 
-// 有结论就该让位:提示只是提示,长期占着屏幕反而挡路。
 const CONNECTED_HIDE_DELAY = 2500
 
 const visible = ref(false)
@@ -110,13 +108,11 @@ const hide = () => {
   visible.value = false
 }
 
-// 只在切换后端时出现:首次进入(watch 不 immediate)与刷新页面都不打扰。
 watch(activeUuid, (uuid) => {
   clearTimeout(hideTimer)
   visible.value = Boolean(uuid)
 })
 
-// 探测结果属于上一个后端时不认,避免切换瞬间闪一下旧结论。
 const probe = computed(() =>
   backendProbe.value?.uuid === activeUuid.value ? backendProbe.value : undefined,
 )
@@ -126,8 +122,6 @@ const latency = computed(() => probe.value?.latency ?? 0)
 const label = computed(() => (activeBackend.value ? getLabelFromBackend(activeBackend.value) : ''))
 const url = computed(() => (activeBackend.value ? getBackendProbeUrl(activeBackend.value) : ''))
 
-// 连上了就淡出;连不上则交给 BackendConnectionError —— 失败要给的是诊断和后续动作,
-// 不是一条几秒后自己消失的提示,一条 toast 装不下,也不该由它来装。
 watch(status, (value) => {
   if (!visible.value) return
 

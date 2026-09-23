@@ -26,14 +26,14 @@
 </template>
 
 <script setup lang="ts">
-import { escapeChartHtml } from '@/components/charts/chartTooltip'
-import { useChartTheme, useEChart, echarts, type EChartOption } from '@/composables/useEChart'
+import { escapeChartHtml } from '@/components/charts/chart-tooltip'
+import { useChartTheme, useEChart, echarts, type EChartOption } from '@/composables/use-echart'
 import { isMiddleScreen } from '@/helper/utils'
 import { rules } from '@/assembly/rules'
 import { PauseCircleIcon, PlayCircleIcon } from '@heroicons/vue/24/outline'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { buildRuleCountData, type RuleCountType } from './ruleHitCount'
+import { buildRuleCountData, type RuleCountType } from './rule-hit-count'
 
 const props = defineProps<{
   type: RuleCountType

@@ -5,7 +5,10 @@
         {{ $t('latency') }}
       </div>
       <div class="settings-grid">
-        <SettingItem :setting-key="k.speedtestMode">
+        <SettingItem
+          :setting-key="k.speedtestMode"
+          :when="can('customTestUrl')"
+        >
           <div class="setting-item-label">
             {{ $t('speedtestMode') }}
             <QuestionMarkCircleIcon
@@ -24,6 +27,7 @@
         </SettingItem>
         <SettingItem
           :setting-key="k.speedtestUrl"
+          :when="can('customTestUrl')"
           class="max-sm:flex-col max-sm:items-start! max-sm:py-3"
         >
           <div class="setting-item-label">
@@ -35,7 +39,10 @@
             :clearable="true"
           />
         </SettingItem>
-        <SettingItem :setting-key="k.speedtestTimeout">
+        <SettingItem
+          :setting-key="k.speedtestTimeout"
+          :when="can('customTestUrl')"
+        >
           <div class="setting-item-label">
             {{ $t('speedtestTimeout') }}
           </div>
@@ -221,10 +228,10 @@
 import { can } from '@/assembly/backend'
 import SelectInput from '@/components/common/SelectInput.vue'
 import SettingItem from '@/components/settings/SettingItem.vue'
-import { useIsSettingVisible } from '@/composables/settings'
-import { PROXIES_ITEM_KEYS } from '@/config/settingsItems'
+import { useIsSettingVisible } from '@/composables/use-setting-visibility'
+import { PROXIES_ITEM_KEYS } from '@/config/settings-items'
 import { FOLDER_MODE, PROXY_CARD_SIZE, PROXY_PREVIEW_TYPE, SPEEDTEST_MODE } from '@/constant'
-import { useTooltip } from '@/helper/tooltip'
+import { useTooltip } from '@/composables/use-tooltip'
 import { getMinCardWidth } from '@/helper/utils'
 import { proxyMap } from '@/assembly/proxies'
 import {

@@ -30,7 +30,7 @@
 
 <script setup lang="ts">
 import { configs, updateConfigs } from '@/assembly/config'
-import { notifyRequestError } from '@/helper/requestError'
+import { notifyRequestError } from '@/helper/request-error'
 import { useElementSize } from '@vueuse/core'
 import { computed, ref } from 'vue'
 

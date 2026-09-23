@@ -1,24 +1,4 @@
-/*
- * 用户可调外观：背景不透明度与毛玻璃强度。
- *
- * 两个值由 composables/useAppearanceVars.ts 发布到 <html> 上：
- *   --app-surface-alpha  表面底色的不透明度（如 90%）
- *   --app-glass          毛玻璃滤镜（如 blur(10px)；强度调到 0 时直接是 none）
- * 整组规则只在开了自定义背景图（.custom-background）时生效。
- *
- * 维护约定：
- * ① 下面的表面注册表是唯一入口。新组件只要用了已注册的类（bg-base-100 /
- *    base-container / card …），就自动拿到半透明底色和毛玻璃，不需要再挂额外的类；
- *    没有底色语义、只想要一层玻璃的容器用 .surface。
- * ② 毛玻璃一条分支只出一层：嵌套在表面里的表面会被取消，避免二次、三次模糊白付 GPU。
- *    确实需要模糊「滚动内容」而不是壁纸的（sticky 表头、横向固定列），显式加
- *    .glass-over-content。
- * ③ 表面列表在毛玻璃那条选择器里出现两次（挑表面 + 排除嵌套），改动要一起改。
- */
-
 .custom-background {
-  /* ---------- 半透明底色 ---------- */
-
   :is(
     .bg-base-100,
     .bg-primary,
@@ -40,8 +20,10 @@
     );
   }
 
-  /* base-150 是 base-100 / base-200 的中间色，斑马纹靠它；并到 base-200 那组会让壁纸
-     模式下的斑马纹比平时重一倍，所以单独一条 */
+  .proxy-active-card .latency-tag {
+    @apply bg-base-100;
+  }
+
   .bg-base-150 {
     background-color: color-mix(
       in oklab,
@@ -50,12 +32,16 @@
     );
   }
 
-  :is(.bg-base-200, .dock) {
+  :is(.bg-base-200, .tab-bar) {
     background-color: color-mix(
       in oklab,
       var(--color-base-200) var(--app-surface-alpha),
       transparent
     );
+  }
+
+  .home-page {
+    background-color: transparent;
   }
 
   .btn.btn-neutral {
@@ -71,7 +57,6 @@
     @apply backdrop-blur-sm;
   }
 
-  /* 弹窗、主色块、延迟标签有可读性下限，太透就看不清了 */
   .modal-box {
     background-color: color-mix(
       in oklab,
@@ -88,67 +73,31 @@
     );
   }
 
-  .bg-primary\/85 .latency-tag {
-    background-color: color-mix(
-      in oklab,
-      var(--color-base-100) max(var(--app-surface-alpha), 90%),
-      transparent
-    );
-  }
-
-  /*
-   * 页面包裹层只负责透出壁纸。它是所有内容的祖先，所以底色不能挂 bg-base-200 那类
-   * 已注册的类（见 components/app.css）——否则整屏都会被当成一层玻璃磨砂，还会把内层
-   * 面板的玻璃全部压掉。
-   */
-  .home-page {
-    background-color: transparent;
-  }
-
-  /* ---------- 毛玻璃 ---------- */
-
-  /*
-   * 一条分支只出一层玻璃：先挑出表面，再用 :not(表面 *) 把「祖先已经是表面」的排掉，
-   * 嵌套的表面靠半透明底色和容器区分即可。表面列表在下面出现两次，改动要一起改。
-   *
-   * 祖先判断必须写全 .custom-background 前缀：壁纸层自己（#app-content、拓扑图全屏容器）
-   * 也挂着 bg-base-100，不限定就会把整个 app 的元素都当成「已经在玻璃里」全部排掉。
-   */
   /* prettier-ignore */
   :is(.bg-base-100, .bg-base-150, .bg-base-200, .card, .collapse, .modal-box, .base-container, .settings-grid, .floating-menu-panel, .surface):not(
-    tr, .badge, .latency-tag,
-    .custom-background :is(.bg-base-100, .bg-base-150, .bg-base-200, .card, .collapse, .modal-box, .base-container, .settings-grid, .floating-menu-panel, .surface) *
-  ),
-  .glass-over-content {
+    tr, .badge, .latency-tag, .home-page,
+    .custom-background :is(.bg-base-100, .bg-base-150, .bg-base-200, .card, .collapse, .modal-box, .base-container, .settings-grid, .floating-menu-panel, .surface):not(.home-page) *
+  ) {
+    -webkit-backdrop-filter: var(--app-glass, none);
     backdrop-filter: var(--app-glass, none);
   }
 
-  /* 横向固定列本身不上底色，自己出一层玻璃把滚过它下面的单元格糊掉 */
-  .pinned-td {
-    @apply bg-transparent!;
-    backdrop-filter: var(--app-glass, none);
+  :is(.modal-box, .tab-bar, .floating-menu-panel, .overlay-glass) {
+    --app-glass: var(--app-glass-overlay);
+    -webkit-backdrop-filter: var(--app-glass-overlay);
+    backdrop-filter: var(--app-glass-overlay);
   }
 
-  /*
-   * 表格是唯一不走「容器出一层玻璃」的地方：滚动容器和表头都显式 backdrop-blur-none!，
-   * 玻璃改由内容层自己铺一层伪元素。原因是带 backdrop-filter 的元素本身是一个 backdrop
-   * root，容器一旦出玻璃，里面 sticky 的表头、固定列就只能采样到容器内部画的东西，等于
-   * 把容器磨好的背景整个切掉（表现是表头背后突然变清晰）；而表头必须自己不透明才能挡住
-   * 滚到它下面的行。所以这里让容器让位，玻璃下沉到内容层。
-   *
-   * 这一层只做视口那么高、sticky 跟着滚，刻意不铺满整张表：虚拟总高动辄几万 px，超过
-   * 合成器的最大纹理尺寸后浏览器会直接丢掉 backdrop-filter，滚到后面就没有模糊了。
-   * 负 margin 抵消它在流里占的高度；isolate 让伪元素的负 z-index 只沉到行背景下面，
-   * 不会向上找到很远的祖先去铺（连接表格的行有 transform 顺带形成层叠上下文，日志/规则
-   * 表格没有，不 isolate 会铺满页面顶部）。
-   *
-   * 挂点必须是盒子高度等于虚拟总高的那个元素，否则 sticky 走不完整个滚动区间：
-   * VirtualTable 用撑高的空行，表格本身就是全高；ConnectionTable 的行是 transform 定位的，
-   * tbody 只有已渲染的那几十行那么高，得挂在外面 height=totalSize 的包裹层上。
-   */
+  .tab-bar {
+    -webkit-backdrop-filter: var(--app-glass-overlay) saturate(180%);
+    backdrop-filter: var(--app-glass-overlay) saturate(180%);
+  }
+
   .table-glass {
     position: relative;
     isolation: isolate;
+    min-height: 100%;
+    overflow-y: clip;
   }
 
   .table-glass::before {
@@ -159,6 +108,7 @@
     z-index: -1;
     height: 100dvh;
     margin-bottom: -100dvh;
+    -webkit-backdrop-filter: var(--app-glass, none);
     backdrop-filter: var(--app-glass, none);
   }
 }

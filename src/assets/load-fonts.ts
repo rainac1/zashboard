@@ -24,9 +24,7 @@ export const loadFonts = () => {
   } else if (__FONT__ === 'firasans') {
     import('@fontsource/fira-sans/index.css')
   } else if (__FONT__ === 'none') {
-    // System UI fonts only; nothing bundled.
   } else {
-    // 'all' (default): bundle every font.
     import('@fontsource/fira-sans/index.css')
     import('subsetted-fonts/MiSans-VF/MiSans-VF.css')
     import('subsetted-fonts/SarasaUiSC-Regular/SarasaUiSC-Regular.css')

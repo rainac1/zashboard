@@ -1,14 +1,9 @@
-import {
-  fetchRules,
-  ruleProviderList,
-  rules,
-  rulesFilter,
-  rulesTabShow,
-  updateRuleProviderAPI,
-} from '@/assembly/rules'
-import { useCtrlsBar } from '@/composables/useCtrlsBar'
+import { can } from '@/assembly/backend'
+import { fetchRules, ruleProviderList, rules, updateRuleProvider } from '@/assembly/rules'
+import { useCtrlsBar } from '@/composables/use-ctrls-bar'
 import { LIST_DISPLAY_STYLE, RULE_TAB_TYPE } from '@/constant'
 import { showNotification } from '@/helper/notification'
+import { rulesFilter, rulesTabShow } from '@/store/rules'
 import {
   disconnectOnRuleDisable,
   displayLatencyInRule,
@@ -32,8 +27,9 @@ export default defineComponent({
     const isUpgrading = ref(false)
     const { isLargeCtrlsBar } = useCtrlsBar()
     const hasProviders = computed(() => {
-      return ruleProviderList.value.length > 0
+      return can('ruleProviders') && ruleProviderList.value.length > 0
     })
+    const showTabs = computed(() => hasProviders.value || can('routingTrace'))
 
     const handlerClickUpgradeAllProviders = async () => {
       if (isUpgrading.value) return
@@ -43,7 +39,7 @@ export default defineComponent({
 
         await Promise.all(
           ruleProviderList.value.map((provider) =>
-            updateRuleProviderAPI(provider.name).then(() => {
+            updateRuleProvider(provider.name).then(() => {
               updateCount++
 
               const isFinished = updateCount === ruleProviderList.value.length
@@ -68,14 +64,16 @@ export default defineComponent({
       }
     }
 
-    const tabsWithNumbers = computed(() => {
-      return Object.values(RULE_TAB_TYPE).map((type) => {
-        return {
-          type,
-          count: type === RULE_TAB_TYPE.RULES ? rules.value.length : ruleProviderList.value.length,
-        }
-      })
-    })
+    const counts: Partial<Record<RULE_TAB_TYPE, () => number>> = {
+      [RULE_TAB_TYPE.RULES]: () => rules.value.length,
+      [RULE_TAB_TYPE.PROVIDER]: () => ruleProviderList.value.length,
+    }
+
+    const tabsWithNumbers = computed(() =>
+      Object.values(RULE_TAB_TYPE)
+        .filter((type) => type !== RULE_TAB_TYPE.TRACE || can('routingTrace'))
+        .map((type) => ({ type, count: counts[type]?.() })),
+    )
 
     return () => {
       const tabs = (
@@ -98,7 +96,8 @@ export default defineComponent({
         </button>
       )
 
-      const searchInput = (
+      const isTrace = rulesTabShow.value === RULE_TAB_TYPE.TRACE
+      const searchInput = !isTrace && (
         <TextInput
           class={isLargeCtrlsBar.value ? 'w-80' : 'w-32 flex-1'}
           v-model={rulesFilter.value}
@@ -167,7 +166,7 @@ export default defineComponent({
 
       const content = !isLargeCtrlsBar.value ? (
         <div class="flex flex-col gap-2 p-2">
-          {hasProviders.value && (
+          {showTabs.value && (
             <div class="flex items-center gap-2">
               {tabs}
               {upgradeAllIcon}
@@ -180,7 +179,7 @@ export default defineComponent({
         </div>
       ) : (
         <div class="flex flex-wrap items-center gap-2 p-2">
-          {hasProviders.value && tabs}
+          {showTabs.value && tabs}
           {searchInput}
           <div class="flex-1"></div>
           {upgradeAllIcon}

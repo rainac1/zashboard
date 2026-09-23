@@ -1,8 +1,6 @@
 <template>
   <div class="charts-card base-container w-full p-4">
-    <!-- Surge-style stat cards -->
     <div class="charts-card-grid grid grid-cols-2 gap-3">
-      <!-- Upload Speed -->
       <div class="bg-base-200/30 flex flex-col gap-1.5 rounded-xl p-4">
         <div class="text-base-content/60 text-xs font-semibold tracking-wider uppercase">
           {{ $t('upload') }}
@@ -25,7 +23,6 @@
         <div class="text-base-content/50 text-xs">{{ $t('total') }} {{ ulTotalStr }}</div>
       </div>
 
-      <!-- Download Speed -->
       <div class="bg-base-200/30 flex flex-col gap-1.5 rounded-xl p-4">
         <div class="text-base-content/60 text-xs font-semibold tracking-wider uppercase">
           {{ $t('download') }}
@@ -47,7 +44,6 @@
         <div class="text-base-content/50 text-xs">{{ $t('total') }} {{ dlTotalStr }}</div>
       </div>
 
-      <!-- Active Connections -->
       <div
         class="charts-card-connections bg-base-200/30 col-span-2 flex flex-col gap-1.5 rounded-xl p-4"
       >
@@ -77,15 +73,8 @@
 </template>
 
 <script setup lang="ts">
-import SparklineChart from '@/components/charts/SparklineChart.vue'
-import {
-  formatHistoryTooltipParam,
-  formatTimeSeriesTooltipParam,
-} from '@/components/charts/chartTooltip'
-import type { ChartTooltipParam } from '@/components/charts/chartTypes'
 import { can } from '@/assembly/backend'
-import { prettyBytesHelper } from '@/helper/utils'
-import { activeConnections, downloadTotal, uploadTotal } from '@/store/connections'
+import { activeConnections, downloadTotal, uploadTotal } from '@/assembly/connections'
 import {
   connectionsHistory,
   downloadSpeed,
@@ -95,7 +84,14 @@ import {
   timeSaved,
   uploadSpeed,
   uploadSpeedHistory,
-} from '@/store/overview'
+} from '@/assembly/overview'
+import SparklineChart from '@/components/charts/SparklineChart.vue'
+import {
+  formatHistoryTooltipParam,
+  formatTimeSeriesTooltipParam,
+} from '@/components/charts/chart-tooltip'
+import type { ChartTooltipParam } from '@/components/charts/chart-types'
+import { prettyBytesHelper } from '@/helper/utils'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 

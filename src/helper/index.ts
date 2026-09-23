@@ -1,8 +1,9 @@
 import { can } from '@/assembly/backend'
 import { connectionAccessor } from '@/assembly/connections'
-import { hiddenGroupMap, proxyMap } from '@/assembly/proxies'
+import { proxyMap } from '@/assembly/proxies'
 import { NOT_CONNECTED, PROXY_CHAIN_DIRECTION, PROXY_TYPE, ROUTE_NAME } from '@/constant'
 import { showNotification } from '@/helper/notification'
+import { hiddenGroupMap } from '@/store/proxies'
 import {
   customCSS,
   customThemes,
@@ -12,7 +13,6 @@ import {
   splitOverviewPage,
 } from '@/store/settings'
 import type { Connection } from '@/types'
-import * as ipaddr from 'ipaddr.js'
 import { computed } from 'vue'
 
 const PROXY_GROUP_TYPES = new Set<string>(Object.values(PROXY_TYPE))
@@ -31,8 +31,6 @@ export const isProxyGroup = (name: string) => {
   return PROXY_GROUP_TYPES.has(proxyNode.type.toLowerCase())
 }
 
-// 以下 getConnectionXxx 均委托给 assembly 层「按当前后端动态选用」的访问器,
-// view / store 直接读取这些 view 友好的派生值,无需感知后端差异。
 export const getConnectionChains = (connection: Connection) =>
   connectionAccessor().chains(connection)
 
@@ -51,12 +49,6 @@ export const getConnectionRulePayload = (connection: Connection) =>
 
 export const getConnectionSourceIP = (connection: Connection) =>
   connectionAccessor().sourceIP(connection)
-
-export const getConnectionSourcePort = (connection: Connection) =>
-  connectionAccessor().sourcePort(connection)
-
-export const getConnectionNetwork = (connection: Connection) =>
-  connectionAccessor().network(connection)
 
 export const getConnectionSmartBlock = (connection: Connection) =>
   connectionAccessor().smartBlock(connection)
@@ -78,18 +70,6 @@ export const getNetworkTypeFromConnection = (connection: Connection) =>
 
 export const getInboundUserFromConnection = (connection: Connection) =>
   connectionAccessor().inboundUser(connection)
-
-export const getDestinationTypeFromConnection = (connection: Connection) => {
-  const destination = getDestinationFromConnection(connection)
-
-  if (ipaddr.IPv4.isIPv4(destination)) {
-    return 'IPv4'
-  } else if (ipaddr.IPv6.isIPv6(destination)) {
-    return 'IPv6'
-  } else {
-    return 'FQDN'
-  }
-}
 
 export const getChainsStringFromConnection = (connection: Connection) => {
   const chains = [...getConnectionChains(connection)]

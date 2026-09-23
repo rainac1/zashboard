@@ -204,7 +204,7 @@
 </template>
 
 <script setup lang="ts">
-import { deleteStorageAPI, setStorageAPI } from '@/assembly/storage'
+import { deleteSyncedSettings, setSyncedSettings } from '@/assembly/storage'
 import { can } from '@/assembly/backend'
 import {
   autoImportSettings,
@@ -215,11 +215,11 @@ import {
   skipImportSettingsConfirm,
   skipSyncSettingsConfirm,
   syncSettingsFromCore,
-} from '@/helper/autoImportSettings'
+} from '@/helper/auto-import-settings'
 import { LOCAL_IMAGE } from '@/helper/indexeddb'
 import { dismissNotification, notifyActionPending, showNotification } from '@/helper/notification'
-import { notifyRequestError } from '@/helper/requestError'
-import { useTooltip } from '@/helper/tooltip'
+import { notifyRequestError } from '@/helper/request-error'
+import { useTooltip } from '@/composables/use-tooltip'
 import {
   applyDashboardSettingsToStorage,
   exportSettings,
@@ -245,7 +245,6 @@ import TextInput from './TextInput.vue'
 
 withDefaults(
   defineProps<{
-    /** 仅显示图标的触发按钮，用于左侧已有文字标签的设置行 */
     iconOnly?: boolean
   }>(),
   { iconOnly: false },
@@ -292,7 +291,6 @@ const handlerClickUploadSettings = async () => {
   if (isStorageSubmitting.value) return
 
   isStorageSubmitting.value = true
-  // 弹窗一关按钮就没了,结果回来之前得有条提示顶着。
   const notifyKey = notifyActionPending('uploadSettings')
   try {
     dashboardSettingsDialogShow.value = false
@@ -308,7 +306,7 @@ const handlerClickUploadSettings = async () => {
       delete settings['config/icon-reflect-list']
     }
 
-    await setStorageAPI(settings)
+    await setSyncedSettings(settings)
     showNotification({
       key: notifyKey,
       content: 'uploadSettingsSuccess',
@@ -338,7 +336,6 @@ const handlerClickSyncSettings = async () => {
       force: true,
       notify: true,
     })
-    // 同步自己会弹成功提示(或因无变化/用户取消而什么都不做),这里只负责收掉「执行中」。
     dismissNotification(notifyKey)
   } catch (e) {
     notifyRequestError(e, notifyKey)
@@ -354,7 +351,7 @@ const handlerClickDeleteUploadedSettings = async () => {
   isStorageSubmitting.value = true
   const notifyKey = notifyActionPending('deleteUploadedSettings')
   try {
-    await deleteStorageAPI()
+    await deleteSyncedSettings()
     dashboardSettingsDialogShow.value = false
     showNotification({
       key: notifyKey,
@@ -368,7 +365,6 @@ const handlerClickDeleteUploadedSettings = async () => {
   }
 }
 
-// 用户刚打开「自动同步」开关,等同于一次手动同步,失败要说明原因。
 watch(autoSyncSettings, async (value, oldValue) => {
   if (!value || oldValue || isStorageSubmitting.value) return
 

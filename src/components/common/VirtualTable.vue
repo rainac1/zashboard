@@ -3,7 +3,6 @@
     ref="parentRef"
     class="base-container m-3 h-full overflow-auto backdrop-blur-none!"
   >
-    <!-- 玻璃挂在这一层：表格用撑高的空行虚拟，盒子高度就是虚拟总高（见 appearance.css） -->
     <div class="table-glass min-w-min">
       <table :class="['table', sizeOfTable, tableClass]">
         <thead
@@ -55,10 +54,6 @@
             </td>
           </tr>
           <template v-else>
-            <!--
-              行高固定,用上下两个撑高的空行代替 transform 定位:表格行不能脱离文档流,
-              spacer 是唯一能让 tbody 高度与虚拟总高对齐、又不影响 sticky thead 的写法。
-            -->
             <tr
               v-if="paddingTop > 0"
               :style="{ height: `${paddingTop}px` }"
@@ -104,7 +99,7 @@
 import { TABLE_SIZE } from '@/constant'
 import { backgroundImage } from '@/helper/indexeddb'
 import { showNotification } from '@/helper/notification'
-import { useStorage } from '@/helper/storage'
+import { useStorage } from '@/composables/use-storage'
 import { tableSize } from '@/store/settings'
 import { ArrowDownCircleIcon, ArrowUpCircleIcon, CircleStackIcon } from '@heroicons/vue/24/outline'
 import {
@@ -126,7 +121,6 @@ const props = withDefaults(
   defineProps<{
     data: T[]
     columns: ColumnDef<T>[]
-    // 排序状态落盘的 key,同一个表格换页面回来还在
     sortingKey: string
     initialSorting?: SortingState
     estimateSize?: number
@@ -212,7 +206,6 @@ const inheritedStyle = computed(() => {
   return `${baseStyle} backdrop-blur-sm`
 })
 
-// 单元格自带更完整的 tooltip 时,原生 title 和右键复制拿到的都只是排序用的原始值,反而是干扰
 const cellTitle = (cell: Cell<T, unknown>) => {
   if (cell.column.columnDef.meta?.noCellTitle) {
     return undefined
@@ -232,7 +225,6 @@ const copyToClipboard = async (text: string) => {
       timeout: 2000,
     })
   } catch {
-    // 降级处理
     const textArea = document.createElement('textarea')
 
     textArea.value = text

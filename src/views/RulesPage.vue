@@ -1,5 +1,18 @@
 <template>
   <div
+    v-if="isTrace"
+    class="relative size-full overflow-x-hidden"
+  >
+    <RulesCtrl />
+    <div
+      class="p-3"
+      :style="tracePadding"
+    >
+      <DaeRoutingPanel />
+    </div>
+  </div>
+  <div
+    v-else
     :class="
       isRuleTable
         ? 'relative flex size-full flex-col overflow-hidden'
@@ -67,14 +80,17 @@
 </template>
 
 <script setup lang="ts">
+import { renderRules, renderRulesProvider, rulesTabShow } from '@/store/rules'
 import VirtualScroller from '@/components/common/VirtualScroller.vue'
 import RulesCtrl from '@/components/controls/RulesCtrl'
 import RuleCard from '@/components/rules/RuleCard.vue'
 import RuleProvider from '@/components/rules/RuleProvider.vue'
+import DaeRoutingPanel from '@/components/dae/DaeRoutingPanel.vue'
 import RulesTable from '@/components/rules/RulesTable.vue'
-import { usePaddingForViews } from '@/composables/paddingViews'
+import { usePaddingForViews } from '@/composables/use-padding-for-views'
 import { LIST_DISPLAY_STYLE, RULE_TAB_TYPE } from '@/constant'
-import { fetchRules, renderRules, renderRulesProvider, rules, rulesTabShow } from '@/assembly/rules'
+import { can } from '@/assembly/backend'
+import { fetchRules, rules } from '@/assembly/rules'
 import { ruleDisplayStyle } from '@/store/settings'
 import type { Rule } from '@/types'
 import { computed, provide, ref } from 'vue'
@@ -84,6 +100,7 @@ fetchRules()
 const expandedRule = ref<string | null>(null)
 provide('expandedRule', expandedRule)
 
+const isTrace = computed(() => rulesTabShow.value === RULE_TAB_TYPE.TRACE && can('routingTrace'))
 const isRuleTable = computed(() => ruleDisplayStyle.value === LIST_DISPLAY_STYLE.TABLE)
 const cardPadding = usePaddingForViews({
   offsetTop: 12,
@@ -93,6 +110,7 @@ const tablePadding = usePaddingForViews({
   offsetTop: 0,
   offsetBottom: 0,
 })
+const tracePadding = computed(() => cardPadding.padding.value)
 const padding = computed(() =>
   isRuleTable.value ? tablePadding.padding.value : cardPadding.padding.value,
 )

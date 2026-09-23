@@ -1,5 +1,4 @@
 <template>
-  <!-- isolate：把表内 sticky 表头的 z-30 关在自己的层叠上下文里，否则会盖住同为 z-30 的固定控制栏弹出的气泡。 -->
   <div
     ref="parentRef"
     class="base-container isolate m-3 h-full overflow-auto backdrop-blur-none!"
@@ -11,10 +10,6 @@
     @mouseup="handleMouseUp"
     @mouseleave="handleMouseUp"
   >
-    <!--
-      玻璃挂在这一层（见 appearance.css）。tbody 用上下两个占位行撑出虚拟总高，
-      表格自身盒子等于总高，sticky 表头和玻璃背景才能一直跟到底部。
-    -->
     <div
       class="table-glass pb-6"
       :class="isManualTable ? 'min-w-max' : 'min-w-min'"
@@ -127,10 +122,6 @@
               </div>
             </td>
           </tr>
-          <!--
-            行不能脱离文档流,用上下两个撑高的空行占位代替 transform 定位,
-            tbody 高度才等于虚拟总高,sticky thead 和玻璃背景才跟得到底。
-          -->
           <tr
             v-if="paddingTop > 0"
             :style="{ height: `${paddingTop}px` }"
@@ -224,12 +215,13 @@
 </template>
 
 <script setup lang="ts">
+import { can } from '@/assembly/backend'
 import {
-  blockConnectionByIdAPI,
-  disconnectByIdAPI,
+  blockConnectionById,
+  disconnectById,
   getConnectionDisplayValue,
 } from '@/assembly/connections'
-import { useConnections } from '@/composables/connections'
+import { useConnections } from '@/composables/use-connections'
 import {
   CONNECTION_GROUPABLE_KEYS,
   CONNECTION_TAB_TYPE,
@@ -247,8 +239,8 @@ import {
 } from '@/helper'
 import { backgroundImage } from '@/helper/indexeddb'
 import { showNotification } from '@/helper/notification'
-import { notifyRequestError } from '@/helper/requestError'
-import { useStorage } from '@/helper/storage'
+import { notifyRequestError } from '@/helper/request-error'
+import { useStorage } from '@/composables/use-storage'
 import {
   connectionFilter,
   connectionTabShow,
@@ -343,8 +335,7 @@ const columnDefinitions: ColumnDef<Connection>[] = [
     enableSorting: false,
     id: CONNECTIONS_TABLE_ACCESSOR_KEY.Close,
     cell: ({ row }) => {
-      // 「全部」tab 下已关闭的连接关不掉,不给按钮。
-      if (isClosedConnection(row.original)) {
+      if (isClosedConnection(row.original) || !can('connectionsClose')) {
         return null
       }
 
@@ -356,7 +347,7 @@ const columnDefinitions: ColumnDef<Connection>[] = [
             const connection = row.original
 
             e.stopPropagation()
-            disconnectByIdAPI(connection.id).catch(notifyRequestError)
+            disconnectById(connection.id).catch(notifyRequestError)
           },
         },
         [
@@ -375,7 +366,7 @@ const columnDefinitions: ColumnDef<Connection>[] = [
               const connection = row.original
 
               e.stopPropagation()
-              blockConnectionByIdAPI(connection.id).catch(notifyRequestError)
+              blockConnectionById(connection.id).catch(notifyRequestError)
             },
           },
           [
@@ -436,7 +427,6 @@ const columnDefinitions: ColumnDef<Connection>[] = [
         originChains = [originChains[0], originChains[originChains.length - 1]]
       }
 
-      // 完整显示所有代理链
       originChains.forEach((chain, index) => {
         chains.unshift(h(ProxyName, { name: chain, key: chain, filter: connectionFilter.value }))
 
@@ -597,7 +587,6 @@ const columnDefinitions: ColumnDef<Connection>[] = [
 const groupableKeySet = new Set<string>(CONNECTION_GROUPABLE_KEYS)
 const columns: ColumnDef<Connection>[] = columnDefinitions.map((column) => ({
   ...column,
-  // 与移动卡片共用显式白名单，避免 TanStack 的隐式默认值让两端能力漂移。
   enableGrouping: typeof column.id === 'string' && groupableKeySet.has(column.id),
 }))
 
@@ -774,7 +763,7 @@ const isMouseDown = ref(false)
 const DRAG_THRESHOLD = Math.pow(3, 2)
 
 const handleMouseDown = (e: MouseEvent) => {
-  if (e.button !== 0) return // 只处理左键
+  if (e.button !== 0) return
   isMouseDown.value = true
   e.preventDefault()
 }
@@ -785,7 +774,6 @@ const handleMouseMove = (e: MouseEvent) => {
   const deltaX = e.movementX
   const deltaY = e.movementY
 
-  // 检查是否超过拖动阈值
   if (!isDragging.value && Math.pow(deltaX, 2) + Math.pow(deltaY, 2) > DRAG_THRESHOLD) {
     isDragging.value = true
   }
@@ -798,7 +786,6 @@ const handleMouseMove = (e: MouseEvent) => {
 }
 
 const handleMouseUp = () => {
-  // 延迟重置拖动状态，以防止在拖动结束后立即触发点击事件
   if (isDragging.value) {
     setTimeout(() => {
       isDragging.value = false
@@ -807,7 +794,6 @@ const handleMouseUp = () => {
   isMouseDown.value = false
 }
 
-// 复制功能
 const copyToClipboard = async (text: string) => {
   try {
     await navigator.clipboard.writeText(text)
@@ -817,7 +803,6 @@ const copyToClipboard = async (text: string) => {
       timeout: 2000,
     })
   } catch {
-    // 降级处理
     const textArea = document.createElement('textarea')
     textArea.value = text
     document.body.appendChild(textArea)
@@ -856,5 +841,23 @@ th .resizer {
 }
 th:hover .resizer {
   @apply opacity-100;
+}
+
+.pinned-td {
+  background-color: var(--color-base-100);
+}
+
+tr.table-row-stripe > .pinned-td {
+  background-image: linear-gradient(var(--table-stripe), var(--table-stripe));
+}
+
+tbody tr:hover > .pinned-td {
+  background-image: linear-gradient(var(--table-hover), var(--table-hover));
+}
+
+.custom-background .pinned-td {
+  background-color: transparent !important;
+  -webkit-backdrop-filter: var(--app-glass, none);
+  backdrop-filter: var(--app-glass, none);
 }
 </style>

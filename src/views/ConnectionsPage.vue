@@ -15,12 +15,12 @@
 </template>
 
 <script setup lang="ts">
-import { setConnectionGeoIPEnabled } from '@/api/connectionGeoip'
+import { setConnectionGeoIPEnabled } from '@/api/connection-geoip'
 import ConnectionCardList from '@/components/connections/ConnectionCardList.vue'
 import ConnectionDetails from '@/components/connections/ConnectionDetails.vue'
 import ConnectionTable from '@/components/connections/ConnectionTable.vue'
 import ConnectionCtrl from '@/components/controls/ConnectionCtrl.tsx'
-import { usePaddingForViews } from '@/composables/paddingViews'
+import { usePaddingForViews } from '@/composables/use-padding-for-views'
 import { CONNECTIONS_TABLE_ACCESSOR_KEY } from '@/constant'
 import { connectionCardGroupKey } from '@/store/connections'
 import { connectionCardLines, connectionTableColumns, isConnectionCard } from '@/store/settings'

@@ -1,4 +1,4 @@
-import { useStorage } from '@/helper/storage'
+import { useStorage } from '@/composables/use-storage'
 import type { Backend } from '@/types'
 import { isEqual, omit } from 'lodash'
 import { v4 as uuid } from 'uuid'
@@ -12,7 +12,10 @@ type LegacySingboxChannel = {
   port?: string
   secret?: string
 }
-type LegacyBackend = Partial<Backend> & { singboxChannel?: LegacySingboxChannel }
+type LegacyBackend = Omit<Partial<Backend>, 'type'> & {
+  type?: string
+  singboxChannel?: LegacySingboxChannel
+}
 
 // 一次性迁移:补全 `type`;把旧的 singboxChannel 拆分为独立的 sing-box 后端。
 const migrateBackendList = (list: LegacyBackend[]): Backend[] => {
@@ -24,7 +27,7 @@ const migrateBackendList = (list: LegacyBackend[]): Backend[] => {
 
     migrated.push({
       ...base,
-      type: base.type ?? 'clash',
+      type: (base.type as Backend['type']) ?? 'clash',
     })
 
     if (channel?.host) {
@@ -51,21 +54,18 @@ if (backendList.value.some((item) => !item.type || 'singboxChannel' in item)) {
 }
 
 export const activeUuid = useStorage<string>('setup/active-uuid', '')
+
+if (activeUuid.value && !backendList.value.some((item) => item.uuid === activeUuid.value)) {
+  activeUuid.value = ''
+}
 export const activeBackend = computed(() =>
   backendList.value.find((backend) => backend.uuid === activeUuid.value),
 )
 
-// 切换后端的唯一写入口。切换本身只是改一个 uuid,但后续的一切(会话重启、探测、
-// 提示)都挂在 activeBackend 的 watch 上,散着写 activeUuid 就没有地方能收口。
 export const setActiveBackend = (uuid: string) => {
   activeUuid.value = uuid
 }
 
-// 后端管理面板的形态。null = 关闭;list / create / edit 是同一个面板的三种视图,
-// 而不是三个弹窗 —— 从列表点进编辑、保存后退回列表,都不该有弹窗开合的闪烁。
-//
-// 放在 store 而不是 composable:api 层遇到 401 要把编辑框直接摆到用户面前,而按
-// eslint.config.ts 的分层约束,api 层只允许依赖 store/setup。
 export type BackendManagerView =
   { mode: 'list' } | { mode: 'create' } | { mode: 'edit'; uuid: string }
 
@@ -133,8 +133,6 @@ export const removeBackend = (uuid: string) => {
 
   backendList.value = backendList.value.filter((end) => end.uuid !== uuid)
 
-  // 删掉的正是当前后端时,顺手落到剩下的第一个。否则 activeBackend 变成 undefined,
-  // 路由守卫会当场把用户踢去 setup 页 —— 而他只是在管理面板里删了一条。
   if (wasActive) {
     setActiveBackend(backendList.value[0]?.uuid ?? '')
   }

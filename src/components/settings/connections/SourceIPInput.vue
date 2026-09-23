@@ -44,7 +44,8 @@
 </template>
 
 <script setup lang="ts">
-import { checkTruncation, useTooltip } from '@/helper/tooltip'
+import { checkTruncation } from '@/helper/tooltip'
+import { useTooltip } from '@/composables/use-tooltip'
 import { getLabelFromBackend } from '@/helper/utils'
 import { getConnectionSourceIP } from '@/helper'
 import { connections } from '@/store/connections'

@@ -80,9 +80,7 @@ const columns: ColumnDef<LogWithSeq>[] = [
     id: 'payload',
     enableSorting: false,
     accessorFn: (log) => log.payload,
-    cell: ({ row }) =>
-      h(HighlightText, { text: row.original.payload, filter: logFilter.value, ansi: true }),
-    // 前三列在表头定死宽度,内容列不给宽度,table-fixed 会把剩下的横向空间全给它
+    cell: ({ row }) => h(HighlightText, { text: row.original.payload, filter: logFilter.value }),
     meta: { cellClass: 'max-w-none!' },
   },
 ]

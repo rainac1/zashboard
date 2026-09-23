@@ -78,8 +78,8 @@ import { can } from '@/assembly/backend'
 import SelectInput from '@/components/common/SelectInput.vue'
 import SourceIPLabels from '@/components/settings/connections/SourceIPLabels.vue'
 import SettingItem from '@/components/settings/SettingItem.vue'
-import { useIsSettingVisible } from '@/composables/settings'
-import { CONNECTIONS_ITEM_KEYS } from '@/config/settingsItems'
+import { useIsSettingVisible } from '@/composables/use-setting-visibility'
+import { CONNECTIONS_ITEM_KEYS } from '@/config/settings-items'
 import {
   CONNECTION_DISPLAY_STYLE,
   PROXY_CHAIN_DIRECTION,

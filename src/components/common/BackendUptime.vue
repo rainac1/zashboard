@@ -11,7 +11,7 @@
 
 <script setup lang="ts">
 import { startedAt } from '@/assembly/version'
-import { useTooltip } from '@/helper/tooltip'
+import { useTooltip } from '@/composables/use-tooltip'
 import { ClockIcon } from '@heroicons/vue/24/outline'
 import dayjs from 'dayjs'
 import { computed, onScopeDispose, ref } from 'vue'

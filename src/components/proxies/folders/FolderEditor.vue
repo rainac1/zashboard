@@ -161,11 +161,11 @@ import {
   removeManualInclude,
   updateFolder,
   type FolderRule,
-} from '@/store/proxyFolders'
+} from '@/store/proxy-folders'
 import { ArrowLeftIcon, PlusIcon, TrashIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { displayFolderName } from './folderName'
+import { displayFolderName } from './folder-name'
 
 const props = defineProps<{ id: string }>()
 const emit = defineEmits<{ (e: 'close'): void }>()

@@ -1,5 +1,4 @@
 <template>
-  <!-- 两个表格的列定义和排序状态各自独立,必须给 key 强制重建,不能复用同一个实例 -->
   <VirtualTable
     v-if="rulesTabShow === RULE_TAB_TYPE.PROVIDER"
     key="rule-providers"
@@ -19,7 +18,6 @@
     :row-class="ruleRowClass"
     @row-click="handlerRuleClick"
   />
-  <!-- 表格行没法就地展开,选节点这件事挪到弹窗里,链路和卡片视图保持一致 -->
   <DialogWrapper
     v-model="groupDialogVisible"
     :title="groupDialogTitle"
@@ -45,21 +43,15 @@
 </template>
 
 <script setup lang="ts">
+import { renderRules, renderRulesProvider, rulesFilter, rulesTabShow } from '@/store/rules'
 import DialogWrapper from '@/components/common/DialogWrapper.vue'
 import HighlightText from '@/components/common/HighlightText.vue'
 import ProxyChainPath from '@/components/common/ProxyChainPath.vue'
 import VirtualTable from '@/components/common/VirtualTable.vue'
 import ProxyGroup from '@/components/proxies/ProxyGroup.vue'
 import { proxyGroupList } from '@/assembly/proxies'
-import {
-  fetchRules,
-  renderRules,
-  renderRulesProvider,
-  rules,
-  rulesFilter,
-  rulesTabShow,
-  updateRuleProviderAPI,
-} from '@/assembly/rules'
+import { fetchRules, rules, updateRuleProvider } from '@/assembly/rules'
+import { useRuleHitTooltip } from '@/composables/use-rule-hit-tooltip'
 import {
   EMPTY_CELL,
   formatRuleHitCount,
@@ -67,10 +59,9 @@ import {
   isRuleDisabled,
   isUpdateableRuleSet,
   toggleRuleDisabledWithSideEffects,
-  useRuleHitTooltip,
-} from '@/composables/rules'
+} from '@/helper/rules'
 import { RULE_TAB_TYPE } from '@/constant'
-import { notifyRequestError } from '@/helper/requestError'
+import { notifyRequestError } from '@/helper/request-error'
 import { fromNow } from '@/helper/utils'
 import { displayLatencyInRule, displayNowNodeInRule } from '@/store/settings'
 import type { Rule, RuleProvider } from '@/types'
@@ -83,7 +74,6 @@ import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 const { showRuleHitTip } = useRuleHitTooltip()
 
-// 规则序号按配置顺序算一次,免得每行都去 rules 里 indexOf
 const ruleIndexMap = computed(() => {
   const map = new Map<Rule, number>()
 
@@ -92,7 +82,6 @@ const ruleIndexMap = computed(() => {
   return map
 })
 
-// 命中统计是部分内核才有的字段,没有就别占着一列空表头
 const hasRuleExtra = computed(() => rules.value.some((rule) => rule.extra))
 const ruleColumnVisibility = computed(() => ({
   hitMiss: hasRuleExtra.value,
@@ -101,7 +90,6 @@ const ruleColumnVisibility = computed(() => ({
 const updatingProviders = ref<string[]>([])
 const togglingRules = ref<string[]>([])
 
-// 点行选节点:规则指向策略组时才有得选,禁用的规则跟卡片视图一样不给点
 const isRuleSelectable = (rule: Rule) =>
   proxyGroupList.value.includes(rule.proxy) && !isRuleDisabled(rule)
 
@@ -133,7 +121,7 @@ const updateProviderHandler = async (name: string) => {
 
   updatingProviders.value.push(name)
   try {
-    await updateRuleProviderAPI(name)
+    await updateRuleProvider(name)
     await fetchRules()
   } catch (e) {
     notifyRequestError(e)
@@ -230,8 +218,6 @@ const ruleColumns: ColumnDef<Rule>[] = [
     },
     meta: { cellClass: 'w-24 text-right', headerClass: 'text-right' },
   },
-  // 命中与未命中并成一列:两个次数右对齐夹一个固定的斜杠,行与行之间才有一条对齐的轴;
-  // 四条统计(次数 + 最后发生时间)塞不进单元格,统一交给 hover 的 tooltip。
   {
     header: () => t('hitMissCount'),
     id: 'hitMiss',
@@ -239,8 +225,6 @@ const ruleColumns: ColumnDef<Rule>[] = [
     cell: ({ row }) => {
       const extra = row.original.extra
 
-      // 整组右对齐只对齐右边缘,斜杠会随位数左右漂;两侧各给一个等宽的 fr,
-      // 斜杠才真的钉在列中轴上,成为一条贯穿所有行的竖线。
       return h(
         'span',
         {

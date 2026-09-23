@@ -1,8 +1,3 @@
-/*
- * 主题预设：每个 daisyUI 主题的完整调色板。
- * 跨主题共享的令牌放 tokens.css，不要在这里逐个主题重复。
- */
-
 @plugin 'daisyui/theme' {
   name: 'light-monet';
   --color-primary: var(--primary, oklch(49.12% 0.3096 275.75));
@@ -58,7 +53,7 @@
   --color-primary-content: #ffffff;
   --color-secondary: #6e6e73;
   --color-secondary-content: #ffffff;
-  --color-accent: #d2d2d7;
+  --color-accent: #86868b;
   --color-accent-content: #1d1d1f;
   --color-neutral: #3a3a3a;
   --color-neutral-content: #f5f5f7;
@@ -90,8 +85,8 @@
   --color-primary-content: #1d1d1f;
   --color-secondary: #a1a1a6;
   --color-secondary-content: #1d1d1f;
-  --color-accent: #636366;
-  --color-accent-content: #ffffff;
+  --color-accent: #86868b;
+  --color-accent-content: #1d1d1f;
   --color-neutral: #5e5e5e;
   --color-neutral-content: #f5f5f7;
   --color-base-100: #1d1d1f;
@@ -151,12 +146,12 @@
 
 @plugin 'daisyui/theme' {
   name: 'dark-neutral';
-  --color-primary: #6c6c70;
-  --color-primary-content: #fafafa;
-  --color-secondary: #57575c;
-  --color-secondary-content: #fafafa;
-  --color-accent: #45454a;
-  --color-accent-content: #fafafa;
+  --color-primary: #c1bcb6;
+  --color-primary-content: #1c1c1e;
+  --color-secondary: #9f9b95;
+  --color-secondary-content: #1c1c1e;
+  --color-accent: #88847e;
+  --color-accent-content: #1c1c1e;
   --color-neutral: #6c6c6c;
   --color-neutral-content: #fafafa;
   --color-base-100: #262626;

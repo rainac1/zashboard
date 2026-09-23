@@ -37,7 +37,7 @@
 </template>
 
 <script setup lang="ts">
-import type { ReachabilityStatus } from '@/composables/backendReachability'
+import type { ReachabilityStatus } from '@/composables/use-backend-reachability'
 import { CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
 import { computed } from 'vue'
 

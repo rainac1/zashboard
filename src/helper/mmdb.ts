@@ -289,11 +289,6 @@ const parseMetadata = async (source: MMDBByteSource): Promise<MMDBMetadata> => {
   }
 }
 
-/**
- * An asynchronous MMDB reader backed by a random-access byte source. Unlike
- * mmdb-lib's Buffer-based reader, it only requests the tree and data bytes that
- * the current lookup touches.
- */
 export class AsyncMMDBReader<T> {
   private readonly decoder: MMDBDecoder
   private readonly decodedRecords = new Map<number, Promise<T>>()
@@ -314,11 +309,6 @@ export class AsyncMMDBReader<T> {
     return reader
   }
 
-  /**
-   * Resolves the record for an address, or null when the database has no entry
-   * for it. Malformed input is a miss rather than a throw, so callers can treat
-   * a rejection as a genuine read or decode failure.
-   */
   async get(ipAddress: string): Promise<T | null> {
     if (!ipaddr.isValid(ipAddress)) return null
 

@@ -3,7 +3,6 @@
     class="base-container w-full backdrop-blur-none!"
     v-if="isVisible"
   >
-    <!-- Header -->
     <div class="surface flex items-center justify-between p-4">
       <div
         class="text-base-content/60 flex items-center gap-2 text-xs font-semibold tracking-wider uppercase"
@@ -11,7 +10,6 @@
         {{ t('honkStatsCard') }}
       </div>
     </div>
-    <!-- Stats grid -->
     <div class="surface grid grid-cols-2 gap-3 px-4 pb-4 sm:grid-cols-5">
       <div class="bg-base-200/30 flex flex-col gap-1.5 rounded-xl p-4">
         <div class="text-base-content/60 text-xs font-semibold tracking-wider uppercase">
@@ -50,7 +48,6 @@
         <div class="text-2xl font-extralight tabular-nums">{{ totalStats.activeConns }}</div>
       </div>
     </div>
-    <!-- VirtualTable 的根节点是 h-full,必须由外层给定高度 -->
     <div class="h-96">
       <VirtualTable
         :data="outbounds"
@@ -76,13 +73,10 @@ type HonkOutbound = HonkStats['outbounds'][number]
 
 const { t } = useI18n()
 
-// /stats 的其余分区(就绪池 / warm / TCP / Score / UDP-NFQUEUE)是 honk 的内部计量,
-// 概览里只呈现能对上「哪个出站在跑、跑了多少」的出站统计。
 const outbounds = computed(() =>
   [...(honkStats.value?.outbounds ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
 )
 
-// 能力表挡在前面,轮询清空之前也不会把上一个后端的快照留在屏幕上。
 const isVisible = computed(() => can('runtimeStats') && outbounds.value.length > 0)
 
 const totalStats = computed(() =>

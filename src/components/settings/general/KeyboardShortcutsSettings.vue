@@ -65,6 +65,7 @@
 </template>
 
 <script setup lang="ts">
+import { useKeyboardShortcuts } from '@/composables/use-keyboard'
 import {
   getDefaultShortcutKey,
   KEYBOARD_SHORTCUT_ACTION,
@@ -72,10 +73,9 @@ import {
   PAGE_SHORTCUT_ACTION_INDEX_MAP,
   PAGE_SHORTCUT_ACTIONS,
   serializeShortcutEvent,
-  useKeyboardShortcuts,
-} from '@/composables/keyboard'
+} from '@/helper/keyboard'
 import SettingItem from '@/components/settings/SettingItem.vue'
-import { GENERAL_ITEM_KEYS } from '@/config/settingsItems'
+import { GENERAL_ITEM_KEYS } from '@/config/settings-items'
 import { renderRoutes } from '@/helper'
 import { isMiddleScreen } from '@/helper/utils'
 import { keyboardShortcuts } from '@/store/settings'

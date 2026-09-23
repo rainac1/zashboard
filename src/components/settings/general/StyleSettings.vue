@@ -80,8 +80,8 @@
 <script setup lang="ts">
 import SettingItem from '@/components/settings/SettingItem.vue'
 import SelectInput from '@/components/common/SelectInput.vue'
-import { useIsSettingVisible } from '@/composables/settings'
-import { GENERAL_ITEM_KEYS } from '@/config/settingsItems'
+import { useIsSettingVisible } from '@/composables/use-setting-visibility'
+import { GENERAL_ITEM_KEYS } from '@/config/settings-items'
 import { EMOJIS, FONTS } from '@/constant'
 import { autoTheme, customCSS, darkTheme, defaultTheme, emoji, font } from '@/store/settings'
 import { PencilSquareIcon, PlusIcon } from '@heroicons/vue/24/outline'

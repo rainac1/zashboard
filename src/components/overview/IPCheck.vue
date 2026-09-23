@@ -75,13 +75,9 @@
 <script setup lang="ts">
 import SelectInput from '@/components/common/SelectInput.vue'
 import { getPublicIPInfo, type IPInfo } from '@/api/geoip'
-import {
-  ipCheckPrimaryResult,
-  ipCheckSecondaryResult,
-  type IPCheckResult,
-} from '@/composables/overview'
+import { ipCheckPrimaryResult, ipCheckSecondaryResult, type IPCheckResult } from '@/helper/overview'
 import { IP_INFO_API } from '@/constant'
-import { useTooltip } from '@/helper/tooltip'
+import { useTooltip } from '@/composables/use-tooltip'
 import { autoIPCheck, ipCheckPrimaryAPI, ipCheckSecondaryAPI } from '@/store/settings'
 import { BoltIcon, EyeIcon, EyeSlashIcon } from '@heroicons/vue/24/outline'
 import * as ipaddr from 'ipaddr.js'

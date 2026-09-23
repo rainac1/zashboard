@@ -1,25 +1,16 @@
-/*
- * 项目自定义设计令牌：在 daisyUI 主题预设之上补充的、所有主题共享的值。
- * 需要按主题取不同值的令牌，用 [data-theme='…'] 单独覆盖。
- */
-
 :root,
 [data-theme] {
   --color-base-150: color-mix(in oklch, var(--color-base-100) 50%, var(--color-base-200));
   --color-base-border: color-mix(in srgb, var(--color-base-content) 8%, transparent);
 
-  /* 后端在线的状态点：常驻在侧边栏和列表里，比 success 低一档饱和度才不抢视线 */
   --color-backend-online: oklch(0.68 0.07 165);
 
-  /* 中延迟的亮黄在白底上只有 1.6:1，浅色主题压暗到 4.3:1，深色主题保持原来的亮黄 */
   --color-medium-latency: light-dark(oklch(75.029% 0.15351 92.666), rgb(255, 197, 4));
 
-  /* 统一各主题的圆角令牌，让所有输入控件风格更现代 */
   --radius-field: 0.625rem;
   --radius-selector: 0.5rem;
 }
 
-/* 中性主题下延迟色也要去彩，避免和低饱和配色打架 */
 [data-theme='light-neutral'],
 [data-theme='dark-neutral'] {
   --color-low-latency: oklch(0.551 0.08 167);
@@ -28,7 +19,6 @@
   --color-backend-online: oklch(0.62 0.045 167);
 }
 
-/* 暴露给 Tailwind，使 bg-base-150 / border-base-border 这类工具类可用 */
 @theme inline {
   --color-base-150: var(--color-base-150);
   --color-base-border: var(--color-base-border);

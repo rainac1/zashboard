@@ -1,4 +1,5 @@
-import { DEFAULT_SETTINGS_MENU_ORDER } from '@/config/settingsItems'
+import { useStorage } from '@/composables/use-storage'
+import { DEFAULT_SETTINGS_MENU_ORDER } from '@/config/settings-items'
 import {
   ALL_THEME,
   CONNECTION_DISPLAY_STYLE,
@@ -27,7 +28,6 @@ import {
   TEST_URL,
   type THEME,
 } from '@/constant'
-import { useStorage } from '@/helper/storage'
 import { getMinCardWidth, isMiddleScreen, isPreferredDark } from '@/helper/utils'
 import type { SourceIPLabel } from '@/types'
 import { computed } from 'vue'
@@ -113,7 +113,6 @@ const migrateIPAPISettings = () => {
 
 migrateIPAPISettings()
 
-// global
 export const defaultTheme = useStorage<string>('config/default-theme', 'light')
 export const darkTheme = useStorage<string>('config/dark-theme', 'dark')
 export const autoTheme = useStorage<boolean>('config/auto-theme', true)
@@ -143,7 +142,6 @@ const replaceLegacyTheme = (theme: string, defaultTheme: string) => {
   return defaultTheme
 }
 
-// 仅在确实需要迁移时才写回,避免用户从未改过主题也被写入 storage
 const migratedDefaultTheme = replaceLegacyTheme(defaultTheme.value, 'light')
 if (migratedDefaultTheme !== defaultTheme.value) {
   defaultTheme.value = migratedDefaultTheme
@@ -217,7 +215,6 @@ export const autoDisconnectIdleUDP = useStorage('config/auto-disconnect-idle-udp
 export const autoDisconnectIdleUDPTime = useStorage('config/auto-disconnect-idle-udp-time', 300)
 export const keyboardShortcuts = useStorage<Record<string, string>>('config/keyboard-shortcuts', {})
 
-// overview
 export const splitOverviewPage = useStorage('config/split-overview-page', false)
 export const autoIPCheck = useStorage('config/auto-ip-check', true)
 export const ipCheckPrimaryAPI = useStorage<IP_INFO_API>(
@@ -235,7 +232,7 @@ export const showStatisticsWhenSidebarCollapsed = useStorage(
 )
 export const numberOfChartsInSidebar = useStorage<1 | 2 | 3>(
   'config/number-of-charts-in-sidebar',
-  2,
+  1,
 )
 const defaultOverviewCardOrder: { card: OVERVIEW_CARD; visible: boolean }[] = [
   {
@@ -277,8 +274,6 @@ export const overviewCardOrder = useStorage<{ card: OVERVIEW_CARD; visible: bool
   defaultOverviewCardOrder,
 )
 
-// 确保所有卡片都在配置中。存量配置首次补入全球连接时放在连接拓扑前；
-// 其他缺失卡片仍追加到末尾，已有全球连接的自定义顺序不改。
 const allCardTypes = Object.values(OVERVIEW_CARD)
 const existingCardTypes = new Set(overviewCardOrder.value.map((item) => item.card))
 const missingCards = allCardTypes.filter((card) => !existingCardTypes.has(card))
@@ -308,7 +303,6 @@ export const topologyApplyConnectionFilter = useStorage(
   true,
 )
 
-// proxies
 export const collapseGroupMap = useStorage<Record<string, boolean>>('cache/collapse-group-map', {})
 export const proxyGroupFilterMap = useStorage<Record<string, string>>(
   'cache/proxy-group-filter-map',
@@ -383,7 +377,6 @@ export const groupTestUrls = useStorage<
   }[]
 >('config/group-test-urls', [])
 
-// connections
 export const connectionDisplayStyle = useStorage<CONNECTION_DISPLAY_STYLE>(
   'config/connection-display-style',
   CONNECTION_DISPLAY_STYLE.AUTO,
@@ -427,7 +420,6 @@ export const connectionCardLines = useStorage<CONNECTIONS_TABLE_ACCESSOR_KEY[][]
 export const sourceIPLabelList = useStorage<SourceIPLabel[]>('config/source-ip-label-list', [])
 export const resolveClientHostname = useStorage('config/resolve-client-hostname', false)
 
-// rules
 export const displayNowNodeInRule = useStorage('config/display-now-node-in-rule', true)
 export const displayLatencyInRule = useStorage('config/display-latency-in-rule', true)
 export const disconnectOnRuleDisable = useStorage('config/disconnect-on-rule-disable', true)
@@ -436,7 +428,6 @@ export const ruleDisplayStyle = useStorage<LIST_DISPLAY_STYLE>(
   LIST_DISPLAY_STYLE.CARD,
 )
 
-// logs
 export const logRetentionLimit = useStorage<number>('config/log-retention-limit', 1000)
 export const logDisplayStyle = useStorage<LIST_DISPLAY_STYLE>(
   'config/log-display-style',
@@ -444,16 +435,11 @@ export const logDisplayStyle = useStorage<LIST_DISPLAY_STYLE>(
 )
 export const logSearchHistory = useStorage<string[]>('cache/log-search-history', [])
 
-// settings visibility
-// 使用扁平结构，key 格式为 "大设置项.小设置项" 或 "大设置项"（仅大设置项）
-// 默认所有项都可见，只有隐藏的项才会记录在此对象中
 export const hiddenSettingsItems = useStorage<Record<string, boolean>>(
   'config/hidden-settings-items',
   {},
 )
 
-// settings menu order
-// 存储设置菜单项的顺序
 export const settingsMenuOrder = useStorage<SETTINGS_MENU_KEY[]>(
   'config/settings-menu-order',
   DEFAULT_SETTINGS_MENU_ORDER,

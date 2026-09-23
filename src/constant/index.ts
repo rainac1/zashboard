@@ -61,13 +61,10 @@ export enum CONNECTIONS_TABLE_ACCESSOR_KEY {
   FromOutbound = 'fromOutbound',
 }
 
-// 搜索隐藏列时的键全集：Close 是操作列，没有可搜索的值。
 export const CONNECTION_SEARCHABLE_KEYS = Object.values(CONNECTIONS_TABLE_ACCESSOR_KEY).filter(
   (key) => key !== CONNECTIONS_TABLE_ACCESSOR_KEY.Close,
 )
 
-// 桌面表格与卡片列表共享同一份分组能力清单。分组字段必须有稳定、可读的离散值；
-// 操作列、时间、流量与瞬时速率只用于展示/排序，不参与分组。
 export const CONNECTION_GROUPABLE_KEYS = [
   CONNECTIONS_TABLE_ACCESSOR_KEY.Type,
   CONNECTIONS_TABLE_ACCESSOR_KEY.Process,
@@ -133,7 +130,6 @@ export enum CONNECTION_DISPLAY_STYLE {
   TABLE = 'table',
 }
 
-// 日志/规则页的展示形态,没有 AUTO —— 由用户在各自的 Ctrl 设置里显式选。
 export enum LIST_DISPLAY_STYLE {
   CARD = 'card',
   TABLE = 'table',
@@ -142,6 +138,7 @@ export enum LIST_DISPLAY_STYLE {
 export enum RULE_TAB_TYPE {
   RULES = 'rules',
   PROVIDER = 'ruleProvider',
+  TRACE = 'daeRoutingTrace',
 }
 
 export enum PROXY_TAB_TYPE {
@@ -168,8 +165,6 @@ export enum SORT_DIRECTION {
   DESC = 'desc',
 }
 
-// 排序键的取值类型:决定方向按钮该说「A → Z」还是「从大到小 / 最新在前」,
-// 以及切换排序字段时该落到哪个方向。
 export enum SORT_VALUE_KIND {
   TEXT = 'text',
   NUMBER = 'number',
@@ -190,8 +185,6 @@ export const SORT_TYPE_VALUE_KIND: Record<SORT_TYPE, SORT_VALUE_KIND> = {
   [SORT_TYPE.UPLOAD_SPEED]: SORT_VALUE_KIND.NUMBER,
 }
 
-// 流量和时间字段升序会把 0 字节 / 最早的连接顶到最前,几乎不是用户想看的,
-// 所以切换到这类字段时默认降序;文本字段仍按 A → Z。
 export const naturalSortDirection = (sortType: SORT_TYPE) =>
   SORT_TYPE_VALUE_KIND[sortType] === SORT_VALUE_KIND.TEXT ? SORT_DIRECTION.ASC : SORT_DIRECTION.DESC
 
@@ -210,7 +203,6 @@ export const SORT_DIRECTION_LABEL_KEY: Record<SORT_VALUE_KIND, Record<SORT_DIREC
   },
 }
 
-// 11 个排序字段平铺一列很难扫,按语义分三组呈现。
 export const SORT_TYPE_GROUPS: { labelKey: string; types: readonly SORT_TYPE[] }[] = [
   {
     labelKey: 'basic',
@@ -249,7 +241,6 @@ export enum LOG_LEVEL {
   Silent = 'silent',
 }
 
-// 对应 mihomo constant/tun.go 的 StackTypeMapping
 export enum TUN_STACK {
   gVisor = 'gVisor',
   System = 'System',
@@ -403,9 +394,6 @@ export enum IP_INFO_API {
   IPAPI = 'ipapi.is',
 }
 
-// GeoLite2 databases (country + ASN), loaded once from the CDN and cached in the
-// browser. Served through jsdelivr so the browser gets the CORS headers a
-// cross-origin fetch needs.
 export const GEOIP_COUNTRY_DATABASE_URL =
   'https://testingcf.jsdelivr.net/gh/P3TERX/GeoLite.mmdb@download/GeoLite2-Country.mmdb'
 export const GEOIP_ASN_DATABASE_URL =

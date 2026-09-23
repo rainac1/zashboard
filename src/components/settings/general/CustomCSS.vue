@@ -15,7 +15,7 @@
       ></textarea>
     </div>
     <div
-      class="bg-base-100 border-base-200 absolute right-0 bottom-0 left-0 flex gap-2 border-t p-2 pt-2"
+      class="bg-base-100 border-base-200 overlay-glass absolute right-0 bottom-0 left-0 flex gap-2 border-t p-2 pt-2"
     >
       <button
         class="btn btn-sm"
@@ -47,7 +47,6 @@ const model = defineModel<boolean>('value', {
 const placeholder = `#app {\n  font-size: 14px;\n}`
 const draft = ref(customCSS.value)
 
-// 每次打开都以当前生效的样式为准，避免上次未保存的草稿留在输入框里。
 watch(model, (isOpen) => {
   if (isOpen) {
     draft.value = customCSS.value

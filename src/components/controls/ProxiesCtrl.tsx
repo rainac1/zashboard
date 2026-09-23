@@ -1,23 +1,21 @@
 import { can } from '@/assembly/backend'
 import { configs, updateConfigs } from '@/assembly/config'
-import { disconnectByIdAPI } from '@/assembly/connections'
+import { activeConnections, disconnectById } from '@/assembly/connections'
 import {
   allProxiesLatencyTest,
   fetchProxies,
   hasSmartGroup,
-  proxiesFilter,
-  proxiesTabShow,
   proxyGroupList,
   proxyProviederList,
-  updateProxyProviderAPI,
+  updateProxyProvider,
 } from '@/assembly/proxies'
-import { renderProxiesPageItems } from '@/composables/proxies'
-import { isProxyNodeSearchMode, toggleProxySearchMode } from '@/composables/proxySearch'
-import { useCtrlsBar } from '@/composables/useCtrlsBar'
+import { useCtrlsBar } from '@/composables/use-ctrls-bar'
 import { PROXY_SORT_TYPE, PROXY_TAB_TYPE, ROUTE_NAME, SETTINGS_MENU_KEY } from '@/constant'
+import { renderProxiesPageItems } from '@/helper/proxies'
+import { isProxyNodeSearchMode, toggleProxySearchMode } from '@/helper/proxy-search'
 import { getMinCardWidth } from '@/helper/utils'
-import { activeConnections } from '@/store/connections'
-import { isProxyFolderModeActive } from '@/store/proxyFolders'
+import { proxiesFilter, proxiesTabShow } from '@/store/proxies'
+import { isProxyFolderModeActive } from '@/store/proxy-folders'
 import {
   automaticDisconnection,
   collapseGroupMap,
@@ -39,6 +37,7 @@ import {
   ChevronUpIcon,
   GlobeAltIcon,
   RectangleGroupIcon,
+  RectangleStackIcon,
   WrenchScrewdriverIcon,
 } from '@heroicons/vue/24/outline'
 import { every } from 'lodash'
@@ -50,6 +49,7 @@ import DialogWrapper from '../common/DialogWrapper.vue'
 import SegmentedControl from '../common/SegmentedControl.vue'
 import SelectInput from '../common/SelectInput.vue'
 import TextInput from '../common/TextInput.vue'
+import DaeEntryModal from '../proxies/DaeEntryModal.vue'
 
 export default defineComponent({
   name: 'ProxiesCtrl',
@@ -59,13 +59,14 @@ export default defineComponent({
     const isUpgrading = ref(false)
     const isAllLatencyTesting = ref(false)
     const settingsModel = ref(false)
+    const entryManagerModel = ref(false)
     const { isLargeCtrlsBar } = useCtrlsBar()
     const handlerClickUpdateAllProviders = async () => {
       if (isUpgrading.value) return
       isUpgrading.value = true
       try {
         await Promise.all(
-          proxyProviederList.value.map((provider) => updateProxyProviderAPI(provider.name)),
+          proxyProviederList.value.map((provider) => updateProxyProvider(provider.name)),
         )
         await fetchProxies()
         isUpgrading.value = false
@@ -96,7 +97,7 @@ export default defineComponent({
       if (can('disconnectOnModeChange') && automaticDisconnection.value) {
         activeConnections.value.forEach((connection) => {
           if (connection.rule.includes('clash_mode')) {
-            disconnectByIdAPI(connection.id)
+            disconnectById(connection.id)
           }
         })
       }
@@ -150,15 +151,28 @@ export default defineComponent({
           }))}
         />
       )
-      const upgradeAllIcon = proxiesTabShow.value === PROXY_TAB_TYPE.PROVIDER && (
-        <button
-          class="btn btn-circle btn-sm"
-          onClick={handlerClickUpdateAllProviders}
-        >
-          <ArrowPathIcon class={['h-4 w-4', isUpgrading.value && 'animate-spin']} />
-        </button>
+      const manageEntriesIcon = (can('entryManage') || can('groupConfigPatch')) && (
+        <>
+          <button
+            class="btn btn-circle btn-sm"
+            title={t('daeEntries')}
+            onClick={() => (entryManagerModel.value = true)}
+          >
+            <RectangleStackIcon class="h-4 w-4" />
+          </button>
+          <DaeEntryModal v-model={entryManagerModel.value} />
+        </>
       )
-      const modeSelect = configs.value && (
+      const upgradeAllIcon = proxiesTabShow.value === PROXY_TAB_TYPE.PROVIDER &&
+        can('proxyProviderUpdate') && (
+          <button
+            class="btn btn-circle btn-sm"
+            onClick={handlerClickUpdateAllProviders}
+          >
+            <ArrowPathIcon class={['h-4 w-4', isUpgrading.value && 'animate-spin']} />
+          </button>
+        )
+      const modeSelect = configs.value && can('configPatch') && (
         <SelectInput
           class={['select select-sm', isLargeCtrlsBar.value ? 'min-w-40' : 'min-w-24']}
           modelValue={configs.value.mode}
@@ -182,7 +196,7 @@ export default defineComponent({
         />
       )
 
-      const latencyTestAll = (
+      const latencyTestAll = can('latencyTest') && (
         <button
           class="btn btn-circle btn-sm"
           onClick={handlerClickLatencyTestAll}
@@ -362,6 +376,7 @@ export default defineComponent({
             {modeSelect}
             {searchInput}
             {settingsModal}
+            {manageEntriesIcon}
             {toggleCollapseAll}
             {latencyTestAll}
           </div>
@@ -373,6 +388,7 @@ export default defineComponent({
           <div class="flex flex-1">{searchInput}</div>
           {upgradeAllIcon}
           {settingsModal}
+          {manageEntriesIcon}
           {toggleCollapseAll}
           {latencyTestAll}
         </div>

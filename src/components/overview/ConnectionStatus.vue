@@ -60,12 +60,7 @@ import {
   getGithubLatencyAPI,
   getYouTubeLatencyAPI,
 } from '@/api/latency'
-import {
-  baiduLatency,
-  cloudflareLatency,
-  githubLatency,
-  youtubeLatency,
-} from '@/composables/overview'
+import { baiduLatency, cloudflareLatency, githubLatency, youtubeLatency } from '@/helper/overview'
 import { getColorForLatency } from '@/helper'
 import { autoConnectionCheck } from '@/store/settings'
 import { BoltIcon } from '@heroicons/vue/24/outline'
@@ -83,7 +78,6 @@ const targets = [
 
 const isTesting = ref(false)
 
-// 仅用成功(>0)样本统计 min / avg / max。
 const computeStats = (values: number[]) => {
   const ok = values.filter((v) => v > 0).sort((a, b) => a - b)
   if (!ok.length) return null
@@ -105,7 +99,6 @@ const getLatency = async () => {
   targets.forEach((t) => (t.ref.value = []))
 
   try {
-    // 每个目标各自独立跑 ROUNDS 轮,互不阻塞;结果逐轮追加,柱子渐次填充。
     await Promise.all(
       targets.map(async (t) => {
         for (let i = 0; i < ROUNDS; i++) {

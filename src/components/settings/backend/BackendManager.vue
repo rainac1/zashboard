@@ -1,16 +1,4 @@
-<!--
-  后端管理的唯一去处:列表、切换、新增、编辑、删除、排序全在这里。
-  以前这些散在 Setup 页、侧边栏切换器、连接失败页三处,同一件事有三种做法;
-  更糟的是「新增一个后端」得先把自己登出(清 activeUuid)再跳路由才能进到表单。
-
-  列表态和表单态是同一个弹窗的两个视图,不是两个弹窗 —— 从列表点编辑、保存后
-  退回列表,中间不该有开合闪烁。
--->
 <template>
-  <!--
-    DialogWrapper 会 teleport 到 #app-content,而那正是挂载本组件的 App 根节点 ——
-    首帧它还没进 DOM。等挂载完再渲染,与同处 App 根下的 ConfirmDialogHost 一致。
-  -->
   <DialogWrapper
     v-if="isReady"
     v-model="isOpen"
@@ -18,7 +6,6 @@
     box-class="max-w-md"
     @enter="handleEnter"
   >
-    <!-- 列表态 -->
     <div
       v-if="view?.mode === 'list'"
       class="flex flex-col gap-3"
@@ -99,7 +86,6 @@
       </button>
     </div>
 
-    <!-- 表单态:新增与编辑共用 -->
     <div
       v-else-if="editForm"
       class="flex flex-col gap-4"
@@ -139,12 +125,12 @@
 </template>
 
 <script setup lang="ts">
-import { probeBackend } from '@/assembly/backend'
+import { probeBackend } from '@/assembly/probe'
 import BackendStatusDot from '@/components/common/BackendStatusDot.vue'
 import DialogWrapper from '@/components/common/DialogWrapper.vue'
 import ReachabilityIndicator from '@/components/common/ReachabilityIndicator.vue'
-import { useBackendListProbe } from '@/composables/backendListProbe'
-import { useBackendReachability } from '@/composables/backendReachability'
+import { useBackendListProbe } from '@/composables/use-backend-list-probe'
+import { useBackendReachability } from '@/composables/use-backend-reachability'
 import { ROUTE_NAME } from '@/constant'
 import { showNotification } from '@/helper/notification'
 import { getLabelFromBackend } from '@/helper/utils'
@@ -194,7 +180,6 @@ const title = computed(() => {
   }
 })
 
-// 列表露面时才探测,收起立刻停。
 const isListVisible = computed(() => view.value?.mode === 'list')
 const { stateOf } = useBackendListProbe(isListVisible)
 
@@ -213,12 +198,9 @@ const emptyForm = (): Omit<Backend, 'uuid'> => ({
 const editForm = ref<Omit<Backend, 'uuid'> | null>(null)
 const isSaving = ref(false)
 
-// 编辑期间实时探测:地址 / 密码改成什么样才通,改的时候就看得见。
 const reachability = useBackendReachability(editForm)
 const canSave = computed(() => reachability.status.value === 'online' && !isSaving.value)
 
-// 视图切进表单态时装填一次表单。用 mode + uuid 做键,免得列表态的每次探测回填
-// 都把用户正在改的表单重置掉。
 watch(
   () => (view.value?.mode === 'edit' ? `edit:${view.value.uuid}` : (view.value?.mode ?? '')),
   () => {
@@ -237,7 +219,6 @@ watch(
     const backend = backendList.value.find((item) => item.uuid === current.uuid)
 
     if (!backend) {
-      // 要编辑的后端已经不在了(比如别处删掉),退回列表而不是留一个空表单。
       openBackendManager({ mode: 'list' })
       return
     }
@@ -257,9 +238,6 @@ watch(
   { immediate: true },
 )
 
-// 路由守卫只把「没有后端」的人赶去 setup 页,没有反向的那一条:选中一个后端后
-// 不会自己离开。所以在这里补上 —— 否则从 setup 页的管理面板里点一个后端,
-// 状态其实已经切好了,人却还留在登录页上,看着像是没登进去。
 const leaveSetupPage = () => {
   if (router.currentRoute.value.name === ROUTE_NAME.setup) {
     router.push({ name: ROUTE_NAME.proxies })
@@ -274,7 +252,6 @@ const switchTo = (uuid: string) => {
 
 const openEdit = (uuid: string) => openBackendManager({ mode: 'edit', uuid })
 
-// 从列表点进来的退回列表;被 401 之类直接推到编辑态的,取消就是关掉。
 const cameFromList = ref(false)
 
 watch(
@@ -294,8 +271,6 @@ const handleCancel = () => {
   }
 }
 
-// 保存前再确认一次连通性。改错地址就存下去,下次打开面板才发现连不上,
-// 那时已经离开这个表单了 —— 所以拦在这里,原因由上面的指示器给出。
 const handleSave = async () => {
   const current = view.value
   const form = editForm.value
@@ -312,7 +287,6 @@ const handleSave = async () => {
     })
 
     if (!result.ok) {
-      // 失败的原因已经由指示器呈现,让它重探一轮拿到最新结论即可。
       reachability.retry()
       return
     }

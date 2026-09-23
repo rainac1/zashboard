@@ -84,8 +84,8 @@
 
 <script setup lang="ts">
 import SettingItem from '@/components/settings/SettingItem.vue'
-import { PROXIES_ITEM_KEYS } from '@/config/settingsItems'
-import { useTooltip } from '@/helper/tooltip'
+import { PROXIES_ITEM_KEYS } from '@/config/settings-items'
+import { useTooltip } from '@/composables/use-tooltip'
 import { proxyGroupList } from '@/assembly/proxies'
 import { groupTestUrls, independentLatencyTest } from '@/store/settings'
 import {

@@ -1,8 +1,3 @@
-<!--
-  列表里表示「这个后端此刻通不通」的一点。
-  和 ReachabilityIndicator 是两件事:那个是表单里的整行诊断说明(为什么不通、怎么改),
-  这个只在一行里占一个字宽,用来扫视一列后端。
--->
 <template>
   <span class="flex flex-none items-center gap-1.5">
     <span
@@ -24,7 +19,7 @@
 </template>
 
 <script setup lang="ts">
-import type { ReachabilityStatus } from '@/composables/backendReachability'
+import type { ReachabilityStatus } from '@/composables/use-backend-reachability'
 import { computed } from 'vue'
 
 const props = withDefaults(
@@ -42,7 +37,6 @@ const props = withDefaults(
 const dotClass = computed(() => {
   switch (props.status) {
     case 'online':
-      // 用低饱和的 backend-online 而不是 success:这点常驻在列表里,亮绿太吵。
       return 'bg-backend-online'
     case 'offline':
       return 'bg-error'

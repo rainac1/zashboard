@@ -8,31 +8,34 @@ type NotificationKind = 'warning' | 'success' | 'error' | 'info' | 'neutral'
 
 const NOTIFICATION_ICONS: Record<NotificationKind, string> = {
   success: `
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+    <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
       <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
     </svg>
   `,
   error: `
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+    <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
       <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
     </svg>
   `,
   warning: `
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+    <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
       <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9.303 3.376c.866 1.5-.217 3.374-1.948 3.374H4.645c-1.73 0-2.813-1.874-1.948-3.374L10.052 3.37c.866-1.5 3.03-1.5 3.896 0l7.355 12.756ZM12 15.75h.008v.008H12v-.008Z" />
     </svg>
   `,
   info: `
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+    <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
       <path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
     </svg>
   `,
   neutral: `
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+    <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
       <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 4.533A9.707 9.707 0 0 0 6 3c-1.846 0-3.543.507-5 1.395v15.36A9.697 9.697 0 0 1 6 18c1.956 0 3.77.578 5.25 1.566m0-15.033A9.707 9.707 0 0 1 16.5 3c1.846 0 3.543.507 5 1.395v15.36A9.697 9.697 0 0 0 16.5 18a9.707 9.707 0 0 0-5.25 1.566m0-15.033v15.033" />
     </svg>
   `,
 }
+
+const TOAST_CLASS =
+  'app-toast border-base-border bg-base-100/95 pointer-events-auto relative grid w-full items-start gap-x-3 overflow-hidden rounded-xl border p-3 shadow-lg backdrop-blur origin-top-right'
 
 const getNotificationKind = (type: NotificationType): NotificationKind => {
   return type ? (type.replace('alert-', '') as NotificationKind) : 'neutral'
@@ -91,7 +94,6 @@ const setTimer = (
   if (timeout !== 0) {
     if (progressBar) {
       progressBar.style.animation = 'none'
-      // 读取布局以确保复用同一条提示时，倒计时动画能够从头开始。
       void progressBar.offsetWidth
       progressBar.style.animation = `progressBar ${timeout}ms linear forwards`
     }
@@ -143,17 +145,18 @@ const setAlert = (
 ): HTMLElement | null => {
   const kind = getNotificationKind(type)
 
-  alert.className = 'app-toast'
+  alert.className = TOAST_CLASS
   alert.dataset.toastType = kind
   alert.setAttribute('role', kind === 'error' ? 'alert' : 'status')
   alert.setAttribute('aria-live', kind === 'error' ? 'assertive' : 'polite')
 
   const accent = document.createElement('div')
-  accent.className = 'app-toast__accent'
+  accent.className = 'bg-(--toast-accent) h-full min-h-7 w-1 rounded-full'
   accent.setAttribute('aria-hidden', 'true')
 
   const icon = document.createElement('div')
-  icon.className = 'app-toast__icon'
+  icon.className =
+    'bg-(--toast-accent)/12 text-(--toast-accent) grid size-7 place-items-center rounded-lg'
   icon.setAttribute('aria-hidden', 'true')
   icon.innerHTML = NOTIFICATION_ICONS[kind]
 
@@ -163,20 +166,22 @@ const setAlert = (
 
   const closeButton = document.createElement('button')
   closeButton.type = 'button'
-  closeButton.className = 'app-toast__close btn btn-circle btn-ghost btn-xs'
+  closeButton.className =
+    'btn btn-circle btn-ghost btn-xs text-base-content/48 hover:bg-base-content/8 hover:text-base-content size-6 min-h-6 p-0'
   closeButton.setAttribute('aria-label', t('close'))
   closeButton.innerHTML = `
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" aria-hidden="true">
+    <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" aria-hidden="true">
       <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
     </svg>
   `
   closeButton.addEventListener('click', () => closeAlert(alert, alertKey))
 
   const progressContainer = document.createElement('div')
-  progressContainer.className = 'app-toast__progress-track'
+  progressContainer.className =
+    'bg-base-content/6 absolute right-3 bottom-1 left-3 h-0.5 overflow-hidden rounded-full'
 
   const progressBar = document.createElement('div')
-  progressBar.className = 'app-toast__progress'
+  progressBar.className = 'bg-(--toast-accent)/55 h-full w-full origin-left rounded-[inherit]'
 
   progressContainer.appendChild(progressBar)
 
@@ -188,7 +193,6 @@ const setAlert = (
   return progressBar
 }
 
-/** 收掉一条还挂着的提示 —— 动作结束却没有自己的结果提示时用(如已被内部提示接手)。 */
 export const dismissNotification = (key: string) => {
   const alertData = alertMap.get(key)
 
@@ -197,16 +201,6 @@ export const dismissNotification = (key: string) => {
   closeAlert(alertData.alert, key)
 }
 
-/**
- * 用户点下动作时立刻弹一条「执行中」。
- *
- * 按钮转圈是唯一反馈时,清缓存这类几十毫秒就回来的动作只会让按钮闪一下 ——
- * 看不出到底点没点上。这条提示不自动消失(timeout 0),等成功或失败的提示
- * 用同一个 key 顶掉它,一次动作从头到尾只占一条 toast。
- *
- * @param label 动作名的 i18n key
- * @returns 后续成功/失败提示要复用的 key
- */
 export const notifyActionPending = (label: string) => {
   const key = `action:${label}`
 

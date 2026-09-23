@@ -10,11 +10,11 @@
 </template>
 
 <script setup lang="ts">
+import { downloadSpeedHistory, timeSaved, uploadSpeedHistory } from '@/assembly/overview'
 import TimeSeriesChart from '@/components/charts/TimeSeriesChart.vue'
-import { formatHistoryTooltipParam } from '@/components/charts/chartTooltip'
-import type { ChartTooltipParam } from '@/components/charts/chartTypes'
+import { formatHistoryTooltipParam } from '@/components/charts/chart-tooltip'
+import type { ChartTooltipParam } from '@/components/charts/chart-types'
 import { prettyBytesHelper } from '@/helper/utils'
-import { downloadSpeedHistory, timeSaved, uploadSpeedHistory } from '@/store/overview'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
