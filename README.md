@@ -108,4 +108,4 @@ http://host:port/#/setup?hostname=ipordomain&port=9090&secret=123456
    - Selects the backend API: `clash` (Clash REST/WS) or `singbox` (sing-box native).
    - Default: `clash`
 
-### I code just for fun, not for money. If you really want to donate, please consider donating to [UNICEF](https://www.unicef.org/) to help hungry children.
+### I code not only for fun, but even more for money. If you really want to donate, send USDC on Polygon to `0xf51f0c7142e5771cf8fc7c3c498b0819b4239c21` to help the author buy a McDonald's 😊
