@@ -80,6 +80,9 @@ export type Cap =
   | 'independentLatency'
   | 'coreUpdateCheck'
   | 'configPatch'
+  // clash mode 选择器:只要后端能报出 mode / mode-list 就显示,与
+  // PATCH /configs 的端口 / tun 配置块无关(见 ProxiesCtrl 的 modeSelect)。
+  | 'clashMode'
   | 'traceLogLevel'
   | 'silentLogLevel'
   | 'runtimeStats'
@@ -144,6 +147,8 @@ const clashCaps = computed<Caps>(() => {
     independentLatency: mihomoOrForkCore,
     coreUpdateCheck: mihomo,
     configPatch: mihomo,
+    // Clash 通道上 /configs 一律带回 mode,选择器照旧常显(含 sing-box 兼容核)。
+    clashMode: true,
 
     // sing-box 与 honk 有 trace,mihomo 没有
     traceLogLevel: honk || singboxCore,
@@ -211,6 +216,9 @@ const daeCaps = computed<Caps>(() => {
     groupConfigPatch: resources?.groups.config_patch === true,
     lifecycleControl: resources?.suspend.available === true && resources?.resume.available === true,
 
+    // dae 没有 clash mode(配置返回空 mode-list)。
+    clashMode: false,
+
     rules: true,
   }
 })
@@ -240,6 +248,8 @@ const singboxCaps = computed<Caps>(() => {
     nodeLatencyTest: true,
     customTestUrl: true,
     connectionsClose: true,
+    // sing-box API(getClashModeStatus / setClashMode)原生支持 clash mode。
+    clashMode: true,
 
     rules: false,
   }
