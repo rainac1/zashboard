@@ -1,73 +1,62 @@
-name: Build and Deploy
+name: Build and Release
 
 on:
   push:
     branches:
-      - main
+      - singbox
+
+# 同一分支的发布串行执行:两次 push 挨得近时,后一次要能看见前一次建好的 tag,
+# 才能算出正确的 -singbox.N。
+concurrency:
+  group: release-singbox
+  cancel-in-progress: false
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
-  release-please:
+  version:
     runs-on: ubuntu-latest
     outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
-      tag_name: ${{ steps.release.outputs.tag_name }}
-
-    steps:
-      - name: release-please
-        id: release
-        uses: googleapis/release-please-action@v5
-        with:
-          token: ${{ secrets.PAT }}
-          release-type: node
-          target-branch: main
-
-  build-and-deploy:
-    needs: release-please
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        # Each font variant is published to its own gh-pages branch.
-        font:
-          - { key: all, suffix: '' }
-          - { key: cdn, suffix: '-cdn-fonts' }
-          - { key: firasans, suffix: '-firasans-only' }
-          - { key: misans, suffix: '-misans-only' }
-          - { key: pingfang, suffix: '-pingfang-only' }
-          - { key: sarasa, suffix: '-sarasa-only' }
-          - { key: none, suffix: '-no-fonts' }
+      tag: ${{ steps.version.outputs.tag }}
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
-      - uses: pnpm/action-setup@v6
-
-      - name: Install and Build 🔧
-        env:
-          FONT: ${{ matrix.font.key }}
-        run: |
-          pnpm i
-          pnpm run build
-          echo 'board.zash.run.place' > ./dist/CNAME
-
-      - name: Deploy 🚀
-        uses: peaceiris/actions-gh-pages@v4
         with:
-          github_token: ${{ secrets.PAT }}
-          publish_dir: ./dist
-          publish_branch: gh-pages${{ matrix.font.suffix }}
-          force_orphan: true
+          # 需要全部 tag 才能算出下一个 -singbox.N。
+          fetch-depth: 0
+
+      # vX.Y.Z 取 singbox 分支里同步自上游的 package.json 版本;X.Y.Z 不变时
+      # -singbox.N 递增。
+      - name: Compute release tag
+        id: version
+        run: |
+          version=$(node -p "require('./package.json').version")
+          escaped=${version//./\\.}
+          latest=$(git tag -l "v${version}-singbox.*" \
+            | sed -E "s/^v${escaped}-singbox\.([0-9]+)$/\1/" \
+            | sort -n \
+            | tail -n 1)
+          next=$(( ${latest:-0} + 1 ))
+          tag="v${version}-singbox.${next}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Releasing $tag"
+
+      # 先把 release 建好(tag 指向本次 push),后面各矩阵任务只往上挂附件,
+      # 免得 7 个构建同时创建同一个 release 抢跑。
+      - name: Create release
+        uses: softprops/action-gh-release@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: ${{ steps.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
 
   release-dist:
-    needs: release-please
+    needs: version
     runs-on: ubuntu-latest
-    if: ${{ needs.release-please.outputs.release_created }}
     strategy:
       fail-fast: false
       matrix:
+        # Each font variant is published as its own zip asset.
         font:
           - { key: all, suffix: '' }
           - { key: cdn, suffix: '-cdn-fonts' }
@@ -92,40 +81,6 @@ jobs:
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v3
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           files: dist${{ matrix.font.suffix }}.zip
-          tag_name: ${{ needs.release-please.outputs.tag_name }}
-
-  release-image:
-    needs: release-please
-    runs-on: ubuntu-latest
-    if: ${{ needs.release-please.outputs.release_created }}
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: set up QEMU
-        uses: docker/setup-qemu-action@v4
-
-      - name: set up docker buildx
-        uses: docker/setup-buildx-action@v4
-        id: buildx
-
-      - name: login to ghcr.io
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.PAT }}
-
-      - name: build and publish ghcr.io docker image
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          builder: ${{ steps.buildx.outputs.name }}
-          file: Dockerfile
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
-          push: true
-          tags: |
-            ghcr.io/zephyruso/zashboard:latest
-            ghcr.io/zephyruso/zashboard:${{ needs.release-please.outputs.tag_name }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tag_name: ${{ needs.version.outputs.tag }}
