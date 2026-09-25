@@ -39,7 +39,29 @@ let handles: StreamHandle[] = []
 let sessionKey = ''
 let ready: Promise<void> | null = null
 
+// 一次 URLTest 的「结果指纹」:sing-box 把测速历史(时间戳 + 延迟)随
+// SubscribeGroups / SubscribeOutbounds 推送。测速前记下指纹，只有指纹变了才说明
+// 本次结果真的到了 —— 否则任意一次无关推送都会把等待提前唤醒。
+type URLTestStamp = {
+  time: bigint
+  delay: number
+}
+
+const stampKey = (stamp?: URLTestStamp) => (stamp ? `${stamp.time}:${stamp.delay}` : '')
+
+// 组测速由内核并发测试所有成员，结果会分几批推送。等所有成员都变化可能被
+// 「首测即失败、历史一直为空」的成员拖到超时，因此成员分批到达时用一小段静置
+// 时间收尾：期间再有新结果就重新计时。
+const URL_TEST_SETTLE_DELAY = 500
+
 type URLTestWaiter = {
+  // 本次测速要等到的目标(单节点是自身 tag，组是全部成员 tag)。
+  targets: string[]
+  // 登记等待时各目标的结果指纹。
+  baseline: Map<string, string>
+  // 仅部分目标变化时，静置多久后收尾；单节点 / 全部变化为 0(立即结算)。
+  settleDelay: number
+  settleTimer: ReturnType<typeof setTimeout> | null
   resolve: () => void
   reject: (reason: Error) => void
   timer: ReturnType<typeof setTimeout>
@@ -47,43 +69,93 @@ type URLTestWaiter = {
 
 const urlTestWaiters = new Set<URLTestWaiter>()
 
-const resolveURLTestWaiters = () => {
-  for (const waiter of urlTestWaiters) {
-    clearTimeout(waiter.timer)
-    waiter.resolve()
+// 把两个流的数据合成 tag → 结果指纹。同一 tag 可能同时出现在出站流和组快照里，
+// 两路到达有先后：组内成员一律以组快照为准，只有组里没有的 tag 才看出站流 ——
+// 免得较旧的一份把「历史已被删除(延迟 0)」又盖回旧的延迟，或让两路互相误判。
+const collectStamps = () => {
+  const stamps = new Map<string, URLTestStamp>()
+
+  for (const item of outbounds.values()) {
+    stamps.set(item.tag, { time: item.urlTestTime, delay: item.urlTestDelay })
   }
-  urlTestWaiters.clear()
+  for (const group of groups.values()) {
+    for (const item of group.items) {
+      stamps.set(item.tag, { time: item.urlTestTime, delay: item.urlTestDelay })
+    }
+  }
+
+  return stamps
+}
+
+const removeURLTestWaiter = (waiter: URLTestWaiter) => {
+  urlTestWaiters.delete(waiter)
+  clearTimeout(waiter.timer)
+  if (waiter.settleTimer) clearTimeout(waiter.settleTimer)
+}
+
+const resolveURLTestWaiter = (waiter: URLTestWaiter) => {
+  if (!urlTestWaiters.delete(waiter)) return
+
+  clearTimeout(waiter.timer)
+  if (waiter.settleTimer) clearTimeout(waiter.settleTimer)
+  waiter.resolve()
+}
+
+// 流推送后结算等待：只有目标自身的结果变化才算数；部分目标变化时再静置片刻。
+const settleURLTestWaiters = () => {
+  if (!urlTestWaiters.size) return
+
+  const stamps = collectStamps()
+
+  for (const waiter of [...urlTestWaiters]) {
+    const changed = waiter.targets.filter(
+      (tag) => stampKey(stamps.get(tag)) !== waiter.baseline.get(tag),
+    )
+
+    if (!changed.length) continue
+    if (changed.length === waiter.targets.length || waiter.settleDelay <= 0) {
+      resolveURLTestWaiter(waiter)
+      continue
+    }
+
+    if (waiter.settleTimer) clearTimeout(waiter.settleTimer)
+    waiter.settleTimer = setTimeout(() => resolveURLTestWaiter(waiter), waiter.settleDelay)
+  }
 }
 
 const rejectURLTestWaiters = (reason: Error) => {
   for (const waiter of urlTestWaiters) {
     clearTimeout(waiter.timer)
+    if (waiter.settleTimer) clearTimeout(waiter.settleTimer)
     waiter.reject(reason)
   }
   urlTestWaiters.clear()
 }
 
-const waitForURLTestResult = (timeout: number) => {
+const waitForURLTestResult = (
+  timeout: number,
+  targets: string[],
+  baseline: Map<string, string>,
+  settleDelay = 0,
+) => {
   let waiter!: URLTestWaiter
   const promise = new Promise<void>((resolve, reject) => {
     const timer = setTimeout(
       () => {
-        urlTestWaiters.delete(waiter)
+        if (!urlTestWaiters.has(waiter)) return
+        removeURLTestWaiter(waiter)
         reject(new Error('sing-box URL test result timeout'))
       },
       Math.max(5000, timeout) + 1000,
     )
 
-    waiter = { resolve, reject, timer }
+    waiter = { targets, baseline, settleDelay, settleTimer: null, resolve, reject, timer }
     urlTestWaiters.add(waiter)
   })
 
   return {
     promise,
-    cancel: () => {
-      clearTimeout(waiter.timer)
-      urlTestWaiters.delete(waiter)
-    },
+    cancel: () => removeURLTestWaiter(waiter),
   }
 }
 
@@ -195,10 +267,10 @@ const ensureSession = () => {
       if (!resolved) {
         resolved = true
         resolveReady()
-      } else {
-        // URLTest RPC 只负责启动任务；历史记录更新后，结果才会通过此订阅推送。
-        resolveURLTestWaiters()
       }
+      // URLTest RPC 只负责启动任务；历史记录更新后，结果才会通过订阅推送。
+      // 这里按各次测速的目标指纹结算，别让无关推送把等待提前唤醒。
+      settleURLTestWaiters()
     }),
     subscribeStream<OutboundList>('outbounds', (msg) => {
       if (!alive()) {
@@ -208,6 +280,7 @@ const ensureSession = () => {
       outbounds = new Map()
       for (const o of msg.outbounds) outbounds.set(o.tag, o)
       applyPayload()
+      settleURLTestWaiters()
     }),
   ]
 }
@@ -222,8 +295,20 @@ const runURLTest = async (outboundTag: string, timeout = speedtestTimeout.value)
   const client = getSingboxClient()?.client
   if (!client) return
 
+  // 组测速要等组内成员逐个回填，单测只等自身 tag。先记下测速前的结果指纹，
+  // 之后只有指纹变化才说明本次结果到了 —— 避免别处推送触发误判。
+  const members = groups.get(outboundTag)?.items.map((item) => item.tag)
+  const targets = members?.length ? members : [outboundTag]
+  const stamps = collectStamps()
+  const baseline = new Map(targets.map((tag) => [tag, stampKey(stamps.get(tag))]))
+
   // 先注册等待，避免测速很快时结果推送早于一元 RPC 响应而丢失。
-  const result = waitForURLTestResult(timeout)
+  const result = waitForURLTestResult(
+    timeout,
+    targets,
+    baseline,
+    members?.length ? URL_TEST_SETTLE_DELAY : 0,
+  )
   try {
     await Promise.all([client.uRLTest({ outboundTag }), result.promise])
   } finally {
