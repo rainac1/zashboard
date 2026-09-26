@@ -47,7 +47,7 @@
             :disabled="isStorageSubmitting"
             @click="handlerClickSyncSettings"
           >
-            <ArrowPathIcon class="h-4 w-4" />
+            <ArrowDownTrayIcon class="h-4 w-4" />
           </button>
         </div>
         <div class="setting-item">
@@ -104,7 +104,7 @@
           class="btn btn-sm"
           @click="exportSettings"
         >
-          <ArrowDownCircleIcon class="h-4 w-4" />
+          <ArrowUpTrayIcon class="h-4 w-4" />
         </button>
       </div>
       <div class="setting-item">
@@ -115,7 +115,7 @@
           class="btn btn-sm"
           @click="importSettingsFromFile"
         >
-          <ArrowUpCircleIcon class="h-4 w-4" />
+          <ArrowDownTrayIcon class="h-4 w-4" />
         </button>
       </div>
     </div>
@@ -228,10 +228,7 @@ import {
 } from '@/helper/utils'
 import { customBackgroundURL } from '@/store/settings'
 import {
-  ArrowDownCircleIcon,
   ArrowDownTrayIcon,
-  ArrowPathIcon,
-  ArrowUpCircleIcon,
   ArrowUpTrayIcon,
   Cog6ToothIcon,
   QuestionMarkCircleIcon,

@@ -242,29 +242,31 @@ onBeforeUnmount(cancelCorrect)
 </script>
 
 <template>
-  <div
-    ref="rootRef"
-    class="min-w-0"
-  >
-    <div :style="{ height: `${topSpacer}px` }" />
+  <div class="min-w-0 pt-1">
     <div
-      v-for="row in virtualRows"
-      :key="row.key.toString()"
-      :data-index="row.index"
-      :ref="(el) => measureRow(el as Element | null)"
-      class="grid min-w-0 gap-2"
-      :class="row.index < rowCount - 1 && 'pb-2'"
-      :style="{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }"
+      ref="rootRef"
+      class="min-w-0"
     >
-      <ProxyNodeCard
-        v-for="node in rowNodes(row.index)"
-        :key="node"
-        :name="node"
-        :group-name="name"
-        :active="node === now"
-        @click.stop="name && handlerProxySelect(name, node)"
-      />
+      <div :style="{ height: `${topSpacer}px` }" />
+      <div
+        v-for="row in virtualRows"
+        :key="row.key.toString()"
+        :data-index="row.index"
+        :ref="(el) => measureRow(el as Element | null)"
+        class="grid min-w-0 gap-2"
+        :class="row.index < rowCount - 1 && 'pb-2'"
+        :style="{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }"
+      >
+        <ProxyNodeCard
+          v-for="node in rowNodes(row.index)"
+          :key="node"
+          :name="node"
+          :group-name="name"
+          :active="node === now"
+          @click.stop="name && handlerProxySelect(name, node)"
+        />
+      </div>
+      <div :style="{ height: `${bottomSpacer}px` }" />
     </div>
-    <div :style="{ height: `${bottomSpacer}px` }" />
   </div>
 </template>

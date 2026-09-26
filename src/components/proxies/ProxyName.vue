@@ -12,7 +12,18 @@
       :filter="filter"
     />
     <template v-else>{{ name }}</template>
-    <template v-if="dialerProxy"> ({{ dialerProxy }}) </template>
+    <span
+      v-if="dialerProxy"
+      class="ml-1 inline-flex shrink-0 items-center gap-1 text-[0.85em] opacity-80"
+    >
+      <span class="italic">via</span>
+      <HighlightText
+        v-if="filter"
+        :text="dialerProxy"
+        :filter="filter"
+      />
+      <template v-else>{{ dialerProxy }}</template>
+    </span>
   </div>
 </template>
 

@@ -21,23 +21,28 @@
   <DialogWrapper
     v-model="groupDialogVisible"
     :title="groupDialogTitle"
+    :no-padding="true"
+    box-class="max-w-160"
   >
     <div
       v-if="selectedRule"
-      class="flex flex-col gap-2"
+      class="flex h-[70dvh] max-h-142 flex-col overflow-hidden"
     >
-      <ProxyChainPath
-        :proxy="selectedRule.proxy"
-        :selected="selectedGroup"
-        :show-now-node="displayNowNodeInRule"
-        :show-latency="displayLatencyInRule"
-        @update:selected="selectedGroup = $event"
-      />
-      <ProxyGroup
-        :name="selectedGroup"
-        :force-open="true"
-        class="transparent-collapse"
-      />
+      <div class="shrink-0 p-3 pb-0">
+        <ProxyChainPath
+          :proxy="selectedRule.proxy"
+          :selected="selectedGroup"
+          :show-now-node="displayNowNodeInRule"
+          :show-latency="displayLatencyInRule"
+          @update:selected="selectedGroup = $event"
+        />
+      </div>
+      <div
+        class="flex flex-1 flex-col overflow-y-auto"
+        :class="PROXIES_PARENT_CLASS"
+      >
+        <ProxyGroupPanel :name="selectedGroup" />
+      </div>
     </div>
   </DialogWrapper>
 </template>
@@ -48,7 +53,7 @@ import DialogWrapper from '@/components/common/DialogWrapper.vue'
 import HighlightText from '@/components/common/HighlightText.vue'
 import ProxyChainPath from '@/components/common/ProxyChainPath.vue'
 import VirtualTable from '@/components/common/VirtualTable.vue'
-import ProxyGroup from '@/components/proxies/ProxyGroup.vue'
+import ProxyGroupPanel from '@/components/proxies/ProxyGroupPanel.vue'
 import { proxyGroupList } from '@/assembly/proxies'
 import { fetchRules, rules, updateRuleProvider } from '@/assembly/rules'
 import { useRuleHitTooltip } from '@/composables/use-rule-hit-tooltip'
@@ -62,7 +67,7 @@ import {
 } from '@/helper/rules'
 import { RULE_TAB_TYPE } from '@/constant'
 import { notifyRequestError } from '@/helper/request-error'
-import { fromNow } from '@/helper/utils'
+import { fromNow, PROXIES_PARENT_CLASS } from '@/helper/utils'
 import { displayLatencyInRule, displayNowNodeInRule } from '@/store/settings'
 import type { Rule, RuleProvider } from '@/types'
 import { ArrowPathIcon } from '@heroicons/vue/24/outline'
