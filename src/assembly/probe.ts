@@ -6,7 +6,8 @@ export const probeBackend = (
   backend: Backend,
   timeout: number = 10000,
   signal?: AbortSignal,
-): Promise<ProbeResult> => driverFor(backend).system.probe(backend, timeout, signal)
+  authenticate = false,
+): Promise<ProbeResult> => driverFor(backend).system.probe(backend, timeout, signal, authenticate)
 
 export const isBackendAvailable = (backend: Backend, timeout: number = 10000) =>
   probeBackend(backend, timeout).then((result) => result.ok)

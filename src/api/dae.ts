@@ -6,7 +6,7 @@ import type {
   DaeCapabilities,
   DaeCloseResult,
   DaeConfigSnapshot,
-  DaeConfigSource,
+  DaeConfigSourceContent,
   DaeConfigValidation,
   DaeConnectionList,
   DaeDatapath,
@@ -14,9 +14,12 @@ import type {
   DaeDnsCacheList,
   DaeDnsLogList,
   DaeDnsQueryResponse,
+  DaeDnsRuleList,
   DaeFlowDetail,
   DaeFlowList,
+  DaeGeoData,
   DaeGroup,
+  DaeGroupConfigDocument,
   DaeGroupSummary,
   DaeJsonPatchOperation,
   DaeMemoryHistory,
@@ -26,6 +29,7 @@ import type {
   DaeOperationAccepted,
   DaeProbeRequest,
   DaeProvider,
+  DaeProviderCreate,
   DaeProviderList,
   DaeRoutingTrace,
   DaeRuleList,
@@ -33,14 +37,26 @@ import type {
   DaeRuntimeMemory,
   DaeRuntimeOutbounds,
   DaeRuntimeSettings,
+  DaeRuntimeSettingsPatch,
   DaeSelectionResult,
   DaeTraceInput,
   DaeTrafficHistory,
   DaeVersion,
 } from '@/types'
-import axios, { type AxiosRequestConfig } from 'axios'
+import axios, { type AxiosRequestConfig, type AxiosResponse } from 'axios'
 import { createParser } from 'eventsource-parser'
+import {
+  DaeAuthError,
+  daeAuthHeaders,
+  daeBearer,
+  dropDaeSession,
+  ensureDaeSession,
+  fetchDaeDiscovery,
+  isDaePasswordMode,
+} from './dae-auth'
 import './http'
+
+export { fetchDaeDiscovery }
 
 const V1 = '/api/v1'
 
@@ -60,9 +76,6 @@ const del = <T>(path: string, config?: AxiosRequestConfig) =>
   axios.delete<T>(`${V1}${path}`, config).then((res) => res.data)
 
 const seg = (value: string) => encodeURIComponent(value)
-
-const bearerHeaders = (backend: Backend): Record<string, string> =>
-  backend.password ? { Authorization: `Bearer ${backend.password}` } : {}
 
 const OPERATION_POLL_INTERVAL = 500
 const OPERATION_TIMEOUT = 60000
@@ -93,6 +106,16 @@ export const waitForDaeOperation = async (
 
 const settled = (accepted: Promise<DaeOperationAccepted>) => accepted.then(waitForDaeOperation)
 
+const settledResult = async <T>(response: Promise<AxiosResponse>) => {
+  const { status, data } = await response
+
+  if (status !== 202) return data as T
+
+  const operation = await waitForDaeOperation(data as DaeOperationAccepted)
+
+  return operation.result as unknown as T
+}
+
 export const fetchDaeVersionAPI = () => get<DaeVersion>('/version')
 
 export const fetchDaeCapabilitiesAPI = () => get<DaeCapabilities>('/capabilities')
@@ -105,7 +128,7 @@ export const fetchDaeRuntimeOutboundsAPI = () => get<DaeRuntimeOutbounds>('/runt
 
 export const fetchDaeRuntimeSettingsAPI = () => get<DaeRuntimeSettings>('/runtime/settings')
 
-export const patchDaeRuntimeSettingsAPI = (payload: Record<string, unknown>) =>
+export const patchDaeRuntimeSettingsAPI = (payload: DaeRuntimeSettingsPatch) =>
   patch<DaeRuntimeSettings>('/runtime/settings', payload)
 
 export const fetchDaeTrafficHistoryAPI = (params?: {
@@ -132,13 +155,13 @@ export const selectDaeGroupMemberAPI = (
     network,
   })
 
-export const patchDaeGroupAPI = (
+export const patchDaeGroupConfigAPI = (
   groupId: string,
   revision: string,
   operations: DaeJsonPatchOperation[],
 ) =>
-  settled(
-    patch<DaeOperationAccepted>(`/groups/${seg(groupId)}`, operations, {
+  settledResult<DaeGroupConfigDocument | null>(
+    axios.patch(`${V1}/groups/${seg(groupId)}/config`, operations, {
       headers: {
         'Content-Type': 'application/json-patch+json',
         'If-Match': `"${revision}"`,
@@ -149,19 +172,25 @@ export const patchDaeGroupAPI = (
 export const fetchDaeNodesAPI = (params?: { limit?: number; cursor?: string }) =>
   get<DaeNodeList>('/nodes', { params })
 
-export const createDaeNodeAPI = (name: string, link: string) =>
-  post<DaeNode>('/nodes', { name, link })
+export const fetchDaeNodeAPI = (nodeId: string) => get<DaeNode>(`/nodes/${seg(nodeId)}`)
 
-export const deleteDaeNodeAPI = (nodeId: string) => del<DaeDeleteResult>(`/nodes/${seg(nodeId)}`)
+export const createDaeNodeAPI = (name: string, link: string) =>
+  settledResult<DaeNode>(axios.post(`${V1}/nodes`, { name, link }))
+
+export const deleteDaeNodeAPI = (nodeId: string) =>
+  settledResult<DaeDeleteResult>(axios.delete(`${V1}/nodes/${seg(nodeId)}`))
 
 export const fetchDaeProvidersAPI = (params?: { limit?: number; cursor?: string }) =>
   get<DaeProviderList>('/providers', { params })
 
-export const createDaeProviderAPI = (name: string, url: string) =>
-  post<DaeProvider>('/providers', { name, kind: 'subscription', url })
+export const fetchDaeProviderAPI = (providerId: string) =>
+  get<DaeProvider>(`/providers/${seg(providerId)}`)
+
+export const createDaeProviderAPI = (payload: DaeProviderCreate) =>
+  settledResult<DaeProvider>(axios.post(`${V1}/providers`, payload))
 
 export const deleteDaeProviderAPI = (providerId: string) =>
-  del<DaeDeleteResult>(`/providers/${seg(providerId)}`)
+  settledResult<DaeDeleteResult>(axios.delete(`${V1}/providers/${seg(providerId)}`))
 
 export const refreshDaeProviderAPI = (providerId: string) =>
   settled(post<DaeOperationAccepted>(`/providers/${seg(providerId)}/refresh`))
@@ -203,17 +232,20 @@ export const suspendDaeAPI = () => settled(post<DaeOperationAccepted>('/operatio
 
 export const resumeDaeAPI = () => settled(post<DaeOperationAccepted>('/operations/resume', {}))
 
+export const fetchDaeGeoDataAPI = () => get<DaeGeoData>('/geodata')
+
 export const updateDaeGeoDataAPI = () => settled(post<DaeOperationAccepted>('/geodata/update'))
 
 export const flushDaeDnsCacheAPI = () => post('/dns/cache/flush')
 
-export const queryDaeDnsAPI = (domain: string, types: string[]) =>
-  get<DaeDnsQueryResponse>('/dns/query', {
-    params: { domain, type: types },
-    paramsSerializer: {
-      indexes: null,
-    },
-  })
+export const queryDaeDnsAPI = (payload: {
+  domain: string
+  type?: string[]
+  upstream?: string
+  cache_mode?: 'normal' | 'bypass'
+}) => post<DaeDnsQueryResponse>('/dns/query', payload)
+
+export const fetchDaeDnsRulesAPI = () => get<DaeDnsRuleList>('/dns/rules')
 
 export const fetchDaeDnsCacheAPI = (params?: {
   name?: string
@@ -246,7 +278,10 @@ export const fetchDaeDatapathAPI = () =>
 export const fetchDaeConfigAPI = () => get<DaeConfigSnapshot>('/config')
 
 export const fetchDaeConfigSourceAPI = (sourceId: string) =>
-  get<DaeConfigSource>(`/config/sources/${seg(sourceId)}`)
+  get<DaeConfigSourceContent>(`/config/sources/${seg(sourceId)}`)
+
+export const createDaeConfigSourceAPI = (path: string, content: string) =>
+  settled(post<DaeOperationAccepted>('/config/sources', { path, content }))
 
 export const validateDaeConfigAPI = (
   mode: 'syntax' | 'full',
@@ -294,18 +329,19 @@ export const createDaeEventSource = (
   })
 
   const connect = async () => {
-    const headers: Record<string, string> = {
-      Accept: 'text/event-stream',
-      ...bearerHeaders(backend),
-    }
-
-    if (lastEventId) headers['Last-Event-ID'] = lastEventId
-
     parser.reset()
 
     try {
+      const headers: Record<string, string> = {
+        Accept: 'text/event-stream',
+        ...(await daeAuthHeaders(backend)),
+      }
+
+      if (lastEventId) headers['Last-Event-ID'] = lastEventId
+
       const response = await fetch(url.toString(), { headers, signal: controller.signal })
 
+      if (response.status === 401 && isDaePasswordMode(backend)) dropDaeSession(backend)
       if (response.status === EVENT_CURSOR_EXPIRED) lastEventId = ''
       if (!response.ok || !response.body) throw new Error(`HTTP ${response.status}`)
 
@@ -339,6 +375,7 @@ export const probeDaeChannel = async (
   backend: Backend,
   timeout: number,
   signal?: AbortSignal,
+  authenticate = false,
 ): Promise<ProbeResult> => {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), timeout)
@@ -349,14 +386,39 @@ export const probeDaeChannel = async (
   const startAt = Date.now()
   const latency = () => Date.now() - startAt
 
-  try {
-    const res = await fetch(`${getUrlFromBackend(backend)}${V1}/version`, {
+  const fetchVersion = (token: string) =>
+    fetch(`${getUrlFromBackend(backend)}${V1}/version`, {
       method: 'GET',
-      headers: bearerHeaders(backend),
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
       signal: controller.signal,
     })
 
+  const probePasswordMode = async () => {
+    const discovery = await fetchDaeDiscovery(backend, controller.signal)
+
+    if (discovery.auth.mode === 'password') return { ok: true as const, latency: latency() }
+
+    throw new DaeAuthError('token_mode', 0, 'dae: backend is not in password mode')
+  }
+
+  try {
+    const passwordMode = isDaePasswordMode(backend)
+    let token = backend.password
+
+    if (passwordMode) {
+      token = authenticate ? await ensureDaeSession(backend, true, true) : daeBearer(backend)
+
+      if (!token) return await probePasswordMode()
+    }
+
+    const res = await fetchVersion(token)
+
     if (res.ok) return { ok: true, latency: latency() }
+
+    if (res.status === 401 && passwordMode && !authenticate) {
+      dropDaeSession(backend)
+      return await probePasswordMode()
+    }
 
     return {
       ok: false,
@@ -365,6 +427,15 @@ export const probeDaeChannel = async (
       message: `HTTP ${res.status}`,
     }
   } catch (e) {
+    if (e instanceof DaeAuthError) {
+      return {
+        ok: false,
+        latency: latency(),
+        kind: e.status >= 500 ? 'http' : 'unauthorized',
+        message: `${e.message} (${e.code})`,
+      }
+    }
+
     return {
       ok: false,
       latency: latency(),

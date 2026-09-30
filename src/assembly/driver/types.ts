@@ -99,7 +99,12 @@ export interface ConnectionAccessor {
 }
 
 export interface SystemDriver {
-  probe(backend: Backend, timeout: number, signal?: AbortSignal): Promise<ProbeResult>
+  probe(
+    backend: Backend,
+    timeout: number,
+    signal?: AbortSignal,
+    authenticate?: boolean,
+  ): Promise<ProbeResult>
   fetchVersion(): Promise<string>
   // sing-box API(GetStartedAt)独有的内核启动时刻(ms epoch);其余后端无此能力。
   startedAt?(): Promise<number>

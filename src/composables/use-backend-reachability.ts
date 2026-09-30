@@ -32,6 +32,7 @@ export const useBackendReachability = (form: Ref<ReachabilityTarget>) => {
       backend.port,
       backend.secondaryPath || '',
       backend.password || '',
+      backend.username || '',
     ].join('|')
   })
 

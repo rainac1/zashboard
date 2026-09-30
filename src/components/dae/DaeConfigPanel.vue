@@ -13,12 +13,30 @@
       >
         {{ $t('refresh') }}
       </button>
+      <button
+        v-if="can('configCreate')"
+        class="btn btn-sm"
+        :class="creating && 'btn-active'"
+        :disabled="busy"
+        @click="toggleCreate"
+      >
+        {{ $t('daeNewSource') }}
+      </button>
     </div>
 
+    <TextInput
+      v-if="creating"
+      v-model="newPath"
+      class="w-full"
+      placeholder="config.d/proxies.dae"
+      :clearable="true"
+    />
+
     <div
-      v-if="activeSource"
+      v-if="activeSource && !creating"
       class="text-base-content/50 flex flex-wrap gap-x-4 gap-y-1 text-xs"
     >
+      <span class="break-all">{{ activeSource.path }}</span>
       <span>{{ activeSource.kind }}</span>
       <span>{{ activeSource.line_count }} {{ $t('daeLines') }}</span>
       <span>{{ activeSource.bytes }} B</span>
@@ -72,6 +90,19 @@
         {{ $t('daeValidateFull') }}
       </button>
       <button
+        v-if="creating"
+        class="btn btn-sm btn-primary"
+        :disabled="busy || !validNewPath"
+        @click="create"
+      >
+        <span
+          v-if="busy"
+          class="loading loading-spinner h-4 w-4"
+        />
+        {{ $t('daeCreateAndReload') }}
+      </button>
+      <button
+        v-else
         class="btn btn-sm btn-primary"
         :disabled="busy || !editable || !dirty"
         @click="save"
@@ -89,16 +120,18 @@
 <script lang="ts" setup>
 import { can } from '@/assembly/backend'
 import {
+  createDaeConfigSource,
   fetchDaeConfig,
-  fetchDaeConfigSource,
   saveDaeConfigSource,
   validateDaeConfig,
 } from '@/assembly/dae'
 import { fetchProxies } from '@/assembly/proxies'
 import { fetchRules } from '@/assembly/rules'
 import SelectInput from '@/components/common/SelectInput.vue'
+import TextInput from '@/components/common/TextInput.vue'
 import { getRequestErrorMessage } from '@/helper/request-error'
-import type { DaeConfigSource, DaeDiagnostic } from '@/types'
+import type { DaeConfigDiagnosticsError, DaeConfigSource, DaeDiagnostic } from '@/types'
+import axios from 'axios'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -112,16 +145,27 @@ const diagnostics = ref<DaeDiagnostic[]>([])
 const message = ref('')
 const failed = ref(false)
 const busy = ref(false)
+const creating = ref(false)
+const newPath = ref('')
+
+const NEW_SOURCE_PATH =
+  /^(?!\/)(?!.*\/\/)(?!(?:.*\/)?\.\.?(?:\/|$))[^\u0000-\u001f\u007f-\u009f]*\.dae$/
+
+const validNewPath = computed(() => {
+  const path = newPath.value.trim()
+
+  return path.length >= 5 && NEW_SOURCE_PATH.test(path)
+})
 
 const activeSource = computed(() => sources.value.find((item) => item.id === activeSourceId.value))
 const sourceOptions = computed(() =>
   sources.value.map((source) => ({
     value: source.id,
-    label: `${source.kind} · ${source.id}`,
+    label: `${source.kind} · ${source.path}`,
   })),
 )
 const editable = computed(
-  () => can('configEdit') && !!activeSource.value?.writable && activeSource.value.content != null,
+  () => creating.value || (can('configEdit') && !!activeSource.value?.writable),
 )
 const dirty = computed(() => content.value !== original.value)
 
@@ -138,42 +182,53 @@ const load = async () => {
 
     if (!sources.value.some((source) => source.id === activeSourceId.value)) {
       activeSourceId.value = sources.value[0]?.id ?? ''
-    } else {
-      await applySource()
+    } else if (!creating.value) {
+      applySource()
     }
   } catch (e) {
-    failed.value = true
-    message.value = getRequestErrorMessage(e)
+    fail(e)
   } finally {
     busy.value = false
   }
 }
 
-const applySource = async () => {
+const applySource = () => {
   const source = activeSource.value
 
-  if (!source) {
-    content.value = ''
-    original.value = ''
-    return
-  }
-
-  if (source.content == null) {
-    try {
-      const detail = await fetchDaeConfigSource(source.id)
-
-      sources.value = sources.value.map((item) => (item.id === detail.id ? detail : item))
-    } catch {}
-  }
-
-  content.value = activeSource.value?.content ?? ''
+  content.value = source?.content ?? ''
   original.value = content.value
 }
 
-const validate = async (mode: 'syntax' | 'full') => {
-  const source = activeSource.value
+const toggleCreate = () => {
+  creating.value = !creating.value
+  message.value = ''
+  failed.value = false
+  diagnostics.value = []
+  newPath.value = ''
 
-  if (!source) return
+  if (creating.value) {
+    content.value = ''
+    original.value = ''
+  } else {
+    applySource()
+  }
+}
+
+const fail = (e: unknown) => {
+  failed.value = true
+  message.value = getRequestErrorMessage(e)
+
+  if (axios.isAxiosError<DaeConfigDiagnosticsError>(e)) {
+    const reported = e.response?.data?.error?.details?.diagnostics
+
+    if (reported?.length) diagnostics.value = reported
+  }
+}
+
+const validate = async (mode: 'syntax' | 'full') => {
+  const path = creating.value ? newPath.value.trim() : activeSource.value?.path
+
+  if (!path) return
 
   busy.value = true
   message.value = ''
@@ -181,15 +236,38 @@ const validate = async (mode: 'syntax' | 'full') => {
 
   try {
     const result = await validateDaeConfig(mode, [
-      { id: 'candidate', path: source.path, content: content.value },
+      { id: 'candidate', path, content: content.value },
     ])
 
     diagnostics.value = result.diagnostics ?? []
     failed.value = !result.valid
     message.value = result.valid ? t('daeConfigValid') : t('daeConfigInvalid')
   } catch (e) {
-    failed.value = true
-    message.value = getRequestErrorMessage(e)
+    fail(e)
+  } finally {
+    busy.value = false
+  }
+}
+
+const reloadAfterWrite = async () => {
+  await load()
+  await Promise.all([fetchProxies(), fetchRules()])
+}
+
+const create = async () => {
+  if (!validNewPath.value) return
+
+  busy.value = true
+  message.value = ''
+  failed.value = false
+
+  try {
+    await createDaeConfigSource(newPath.value.trim(), content.value)
+    creating.value = false
+    message.value = t('daeConfigSaved')
+    await reloadAfterWrite()
+  } catch (e) {
+    fail(e)
   } finally {
     busy.value = false
   }
@@ -207,17 +285,18 @@ const save = async () => {
   try {
     await saveDaeConfigSource(source.id, source.content_sha256, content.value)
     message.value = t('daeConfigSaved')
-    await load()
-    await Promise.all([fetchProxies(), fetchRules()])
+    await reloadAfterWrite()
   } catch (e) {
-    failed.value = true
-    message.value = getRequestErrorMessage(e)
+    fail(e)
   } finally {
     busy.value = false
   }
 }
 
-watch(activeSourceId, applySource)
+watch(activeSourceId, () => {
+  creating.value = false
+  applySource()
+})
 
 load()
 </script>

@@ -11,8 +11,9 @@ export type Backend = {
   protocol: string
   host: string
   port: string
-  secondaryPath: string // clash REST 路径;sing-box 走顶层 host/port
-  password: string // 通用:Clash secret / dae 密码 / sing-box gRPC Bearer token
+  secondaryPath: string
+  password: string
+  username?: string
   uuid: string
   label?: string
   disableUpgradeCore?: boolean // 仅 clash

@@ -79,6 +79,7 @@ const POLICY_TYPE: Record<string, string> = {
   fallback: 'Fallback',
   random: 'LoadBalance',
   score: 'URLTest',
+  fixed: 'Selector',
 }
 
 const DNS_RECORD_TYPE: Record<string, number> = {
@@ -191,22 +192,32 @@ const providerToProxyProvider = (provider: DaeProvider, nodes: DaeNode[]): Proxy
 })
 
 const PAGE_SIZE = 1000
+const PAGE_WALK_ATTEMPTS = 3
+const SNAPSHOT_EXPIRED = 410
 
 const fetchAllPages = async <P extends { next_cursor: string | null }, T>(
   fetchPage: (params: { limit: number; cursor?: string }) => Promise<P>,
   pick: (page: P) => T[],
 ) => {
-  const items: T[] = []
-  let cursor: string | undefined
+  for (let attempt = 1; ; attempt++) {
+    const items: T[] = []
+    let cursor: string | undefined
 
-  do {
-    const page = await fetchPage({ limit: PAGE_SIZE, cursor })
+    try {
+      do {
+        const page = await fetchPage({ limit: PAGE_SIZE, cursor })
 
-    items.push(...pick(page))
-    cursor = page.next_cursor ?? undefined
-  } while (cursor)
+        items.push(...pick(page))
+        cursor = page.next_cursor ?? undefined
+      } while (cursor)
 
-  return items
+      return items
+    } catch (e) {
+      const expired = axios.isAxiosError(e) && e.response?.status === SNAPSHOT_EXPIRED
+
+      if (!expired || !cursor || attempt >= PAGE_WALK_ATTEMPTS) throw e
+    }
+  }
 }
 
 const fetchAllNodes = () => fetchAllPages(fetchDaeNodesAPI, (page) => page.nodes)
@@ -325,7 +336,6 @@ const testNode = async (name: string, url?: string) => {
   const result = await runProbe({
     target: { type: 'node', node_id: nodeId },
     kind: 'http',
-    purpose: 'data',
     transport: ['tcp'],
     ip_version: ipVersionFor(url),
     warmth: 'cold',
@@ -342,7 +352,6 @@ const testGroup = async (name: string, url?: string) => {
   const result = await runProbe({
     target: { type: 'group', group_id: groupId },
     kind: 'http',
-    purpose: 'data',
     transport: ['tcp'],
     ip_version: ipVersionFor(url),
     members: 'leaves',
@@ -740,7 +749,8 @@ export const daeDriver: Driver = {
   reset: resetSession,
 
   system: {
-    probe: (backend, timeout, signal) => probeDaeChannel(backend, timeout, signal),
+    probe: (backend, timeout, signal, authenticate) =>
+      probeDaeChannel(backend, timeout, signal, authenticate),
     fetchVersion: async () => {
       const { engine } = await fetchDaeVersionAPI()
 
@@ -858,7 +868,7 @@ export const daeDriver: Driver = {
       await flushDaeDnsCacheAPI()
     },
     queryDNS: async (params) => {
-      const { results } = await queryDaeDnsAPI(params.name, [params.type])
+      const { results } = await queryDaeDnsAPI({ domain: params.name, type: [params.type] })
 
       return toDnsQuery(params.name, results)
     },

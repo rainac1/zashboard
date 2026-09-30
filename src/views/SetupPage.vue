@@ -116,10 +116,15 @@ const handleSubmit = async (setupForm: SetupForm, quiet = false) => {
   isSubmitting.value = true
 
   try {
-    const result = await probeBackend({ uuid: '', ...setupForm })
+    const result = await probeBackend({ uuid: '', ...setupForm }, undefined, undefined, true)
 
     if (!result.ok) {
-      if (setupForm === form.value) {
+      if (result.kind === 'unauthorized' && !quiet) {
+        showNotification({
+          content: await describeProbeFailure(result, getBackendProbeUrl(setupForm)),
+          type: 'alert-error',
+        })
+      } else if (setupForm === form.value) {
         reachability.retry()
       } else if (!quiet) {
         showNotification({

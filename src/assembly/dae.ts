@@ -1,14 +1,17 @@
 import {
+  createDaeConfigSourceAPI,
   createDaeNodeAPI,
   createDaeProviderAPI,
   deleteDaeNodeAPI,
   deleteDaeProviderAPI,
   fetchDaeRuntimeAPI,
-  patchDaeGroupAPI,
+  patchDaeGroupConfigAPI,
   resumeDaeAPI,
   suspendDaeAPI,
 } from '@/api/dae'
-import type { DaeJsonPatchOperation } from '@/types'
+import { i18n } from '@/i18n'
+import type { DaeGeoDataDownload, DaeJsonPatchOperation, DaeProviderCreate } from '@/types'
+import axios from 'axios'
 import {
   acquireRuntime,
   daeGroupDetails,
@@ -26,15 +29,28 @@ export {
   fetchDaeDatapathAPI as fetchDaeDatapath,
   fetchDaeDnsCacheAPI as fetchDaeDnsCache,
   fetchDaeDnsLogAPI as fetchDaeDnsLog,
+  fetchDaeDnsRulesAPI as fetchDaeDnsRules,
   fetchDaeFlowAPI as fetchDaeFlow,
+  fetchDaeGeoDataAPI as fetchDaeGeoData,
   fetchDaeRuntimeSettingsAPI as fetchDaeRuntimeSettings,
   patchDaeRuntimeSettingsAPI as patchDaeRuntimeSettings,
   saveDaeConfigSourceAPI as saveDaeConfigSource,
   traceDaeRoutingAPI as traceDaeRouting,
+  updateDaeGeoDataAPI as updateDaeGeoData,
   validateDaeConfigAPI as validateDaeConfig,
 } from '@/api/dae'
 
 export { daeGroupDetails, daeNodeList, daeProviderList }
+
+export const downloadRouteLabel = (download: DaeGeoDataDownload) => {
+  const route = i18n.global.t(`daeRoute_${download.route}`)
+
+  if (download.route !== 'group') return route
+
+  const group = daeGroupDetails.value.find((item) => item.id === download.group_id)
+
+  return `${route} · ${group?.name ?? download.group_id ?? '-'}`
+}
 
 export const daeRuntime = runtimeSample
 
@@ -59,18 +75,30 @@ export const createDaeNode = (name: string, link: string) =>
 
 export const deleteDaeNode = (nodeId: string) => withProxiesRefresh(deleteDaeNodeAPI(nodeId))
 
-export const createDaeProvider = (name: string, url: string) =>
-  withProxiesRefresh(createDaeProviderAPI(name, url))
+export const createDaeProvider = (payload: DaeProviderCreate) =>
+  withProxiesRefresh(createDaeProviderAPI(payload))
 
 export const deleteDaeProvider = (providerId: string) =>
   withProxiesRefresh(deleteDaeProviderAPI(providerId))
+
+const PRECONDITION_FAILED = 412
 
 export const patchDaeGroup = async (
   groupId: string,
   revision: string,
   operations: DaeJsonPatchOperation[],
 ) => {
-  await withProxiesRefresh(patchDaeGroupAPI(groupId, revision, operations))
+  try {
+    await withProxiesRefresh(patchDaeGroupConfigAPI(groupId, revision, operations))
+  } catch (e) {
+    if (axios.isAxiosError(e) && e.response?.status === PRECONDITION_FAILED) await fetchProxies()
+
+    throw e
+  }
+}
+
+export const createDaeConfigSource = async (path: string, content: string) => {
+  await withProxiesRefresh(createDaeConfigSourceAPI(path, content))
 }
 
 export const suspendDae = async () => {

@@ -18,28 +18,72 @@
     <template v-if="activeTab === 'providers'">
       <form
         v-if="canManageProviders"
-        class="flex flex-wrap items-center gap-2"
+        class="flex flex-col gap-2"
         @submit.prevent="addProvider"
       >
-        <TextInput
-          v-model="providerForm.name"
-          class="w-40"
-          :placeholder="$t('name')"
-          :clearable="true"
-        />
-        <TextInput
-          v-model="providerForm.url"
-          class="min-w-0 flex-1"
-          placeholder="https://example.com/sub"
-          :clearable="true"
-        />
-        <button
-          type="submit"
-          class="btn btn-sm btn-primary"
-          :disabled="busy || !providerForm.name || !providerForm.url"
+        <div class="flex flex-wrap items-center gap-2">
+          <TextInput
+            v-model="providerForm.name"
+            class="w-40"
+            :placeholder="$t('name')"
+            :clearable="true"
+          />
+          <TextInput
+            v-model="providerForm.url"
+            class="min-w-0 flex-1"
+            placeholder="https://example.com/sub"
+            :clearable="true"
+          />
+          <button
+            type="submit"
+            class="btn btn-sm btn-primary"
+            :disabled="busy || !providerForm.name || !providerForm.url"
+          >
+            {{ $t('daeAddSubscription') }}
+          </button>
+        </div>
+        <div
+          v-if="createOptions"
+          class="flex flex-wrap items-center gap-2 text-xs"
         >
-          {{ $t('daeAddSubscription') }}
-        </button>
+          <label
+            v-if="createOptions.update_interval != null"
+            class="flex items-center gap-2"
+          >
+            <span class="text-base-content/70">{{ $t('daeUpdateInterval') }}</span>
+            <input
+              v-model="providerForm.updateInterval"
+              type="number"
+              min="0"
+              max="31536000"
+              class="input input-sm w-28"
+              :placeholder="String(createOptions.update_interval)"
+            />
+          </label>
+          <label
+            v-if="createOptions.user_agent != null"
+            class="flex min-w-0 flex-1 items-center gap-2"
+          >
+            <span class="text-base-content/70">User-Agent</span>
+            <TextInput
+              v-model="providerForm.userAgent"
+              class="min-w-0 flex-1"
+              :placeholder="createOptions.user_agent"
+              :clearable="true"
+            />
+          </label>
+          <label
+            v-if="createOptions.cache != null"
+            class="flex items-center gap-2"
+          >
+            <span class="text-base-content/70">{{ $t('daeKeepCache') }}</span>
+            <input
+              v-model="providerForm.cache"
+              type="checkbox"
+              class="toggle toggle-sm"
+            />
+          </label>
+        </div>
       </form>
 
       <div class="bg-base-200/30 max-h-80 overflow-y-auto rounded-sm">
@@ -49,16 +93,28 @@
           class="border-base-300/30 flex items-center gap-2 p-2 text-xs not-last:border-b"
         >
           <span class="bg-base-200 rounded-full px-2 py-0.5">{{ provider.kind }}</span>
-          <span class="min-w-0 flex-1 truncate">{{ provider.name }}</span>
+          <span
+            class="min-w-0 flex-1 truncate"
+            :title="provider.url_redacted ?? undefined"
+          >
+            {{ provider.name }}
+          </span>
+          <span
+            v-if="provider.download"
+            class="text-base-content/50"
+          >
+            {{ downloadRouteLabel(provider.download) }}
+          </span>
           <span class="text-base-content/50">{{ provider.node_count }}</span>
           <span
             class="text-base-content/60"
             :class="provider.status === 'error' && 'text-error'"
+            :title="provider.last_error?.message"
           >
             {{ provider.status }}
           </span>
           <button
-            v-if="canManageProviders && provider.kind === 'subscription'"
+            v-if="canManageProviders && provider.kind !== 'inline'"
             class="btn btn-ghost btn-xs"
             :aria-label="$t('delete')"
             :disabled="busy"
@@ -225,6 +281,7 @@
 
 <script lang="ts" setup>
 import { daeCapabilities } from '@/assembly/capabilities'
+import { downloadRouteLabel } from '@/assembly/dae'
 import {
   createDaeNode,
   createDaeProvider,
@@ -240,7 +297,7 @@ import SelectInput from '@/components/common/SelectInput.vue'
 import TextInput from '@/components/common/TextInput.vue'
 import { showConfirmDialog } from '@/helper/confirm-dialog'
 import { getRequestErrorMessage } from '@/helper/request-error'
-import type { DaeJsonPatchOperation } from '@/types'
+import type { DaeJsonPatchOperation, DaeProviderCreate } from '@/types'
 import { TrashIcon } from '@heroicons/vue/24/outline'
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -255,7 +312,13 @@ const busy = ref(false)
 const message = ref('')
 const failed = ref(false)
 
-const providerForm = reactive({ name: '', url: '' })
+const providerForm = reactive({
+  name: '',
+  url: '',
+  updateInterval: '' as string | number,
+  userAgent: '',
+  cache: true,
+})
 const nodeForm = reactive({ name: '', link: '' })
 const groupForm = reactive({
   policy: 'selector',
@@ -271,9 +334,10 @@ const inlineNodes = computed(() =>
   daeNodeList.value.filter((node) => node.provider_id === 'inline' || !node.provider_id),
 )
 const canManageProviders = computed(
-  () => daeCapabilities.value?.resources.providers.can_manage === true,
+  () => daeCapabilities.value?.resources.providers?.can_manage === true,
 )
-const canManageNodes = computed(() => daeCapabilities.value?.resources.nodes.can_manage === true)
+const canManageNodes = computed(() => daeCapabilities.value?.resources.nodes?.can_manage === true)
+const createOptions = computed(() => daeCapabilities.value?.resources.providers?.create_options)
 
 const tabOptions = computed<SegmentOption[]>(() => [
   { value: 'providers', label: t('daeSubscriptions') },
@@ -311,7 +375,7 @@ const applyGroup = () => {
   groupForm.finalOutbound = group.config.final_outbound ?? ''
   groupForm.tolerance = group.config.tolerance == null ? '' : String(group.config.tolerance)
   groupForm.idleTimeout = group.config.idle_timeout == null ? '' : String(group.config.idle_timeout)
-  groupForm.interruptConnections = group.config.interrupt_connections
+  groupForm.interruptConnections = group.config.interrupt_connections ?? false
 }
 
 const run = async (action: () => Promise<void>, success: string) => {
@@ -341,11 +405,32 @@ const confirmDelete = async (name: string) => {
   return confirmed
 }
 
+const buildProvider = (): DaeProviderCreate => {
+  const payload: DaeProviderCreate = {
+    name: providerForm.name.trim(),
+    kind: 'subscription',
+    url: providerForm.url.trim(),
+  }
+  const options = createOptions.value
+  const interval = numberOrNull(providerForm.updateInterval)
+  const userAgent = providerForm.userAgent.trim()
+
+  if (options?.update_interval != null && interval !== null) payload.update_interval = interval
+  if (options?.user_agent != null && userAgent) payload.user_agent = userAgent
+  if (options?.cache != null && providerForm.cache !== options.cache) {
+    payload.cache = providerForm.cache
+  }
+
+  return payload
+}
+
 const addProvider = () =>
   run(async () => {
-    await createDaeProvider(providerForm.name.trim(), providerForm.url.trim())
+    await createDaeProvider(buildProvider())
     providerForm.name = ''
     providerForm.url = ''
+    providerForm.updateInterval = ''
+    providerForm.userAgent = ''
   }, 'daeEntryCreated')
 
 const removeProvider = async (id: string, name: string) => {
@@ -382,12 +467,7 @@ const buildOperations = (): DaeJsonPatchOperation[] => {
 
   const operations: DaeJsonPatchOperation[] = []
   const set = (field: string, path: string, value: unknown) => {
-    if (!mutable(field)) return
-    if (value === null) {
-      operations.push({ op: 'remove', path })
-      return
-    }
-    operations.push({ op: 'replace', path, value })
+    if (mutable(field)) operations.push({ op: 'replace', path, value })
   }
 
   if (mutable('policy') && groupForm.policy !== group.policy.kind) {
@@ -415,7 +495,7 @@ const buildOperations = (): DaeJsonPatchOperation[] => {
   if (idleTimeout !== (group.config.idle_timeout ?? null)) {
     set('idle_timeout', '/config/idle_timeout', idleTimeout)
   }
-  if (groupForm.interruptConnections !== group.config.interrupt_connections) {
+  if (groupForm.interruptConnections !== (group.config.interrupt_connections ?? false)) {
     set('interrupt_connections', '/config/interrupt_connections', groupForm.interruptConnections)
   }
 
