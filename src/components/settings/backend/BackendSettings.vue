@@ -155,6 +155,18 @@
       </div>
     </template>
 
+    <template v-if="showDaeGeoData">
+      <div class="settings-section-label">{{ $t('daeGeoData') }}</div>
+      <div class="settings-grid">
+        <SettingItem
+          :setting-key="k.daeGeoData"
+          class="py-3"
+        >
+          <DaeGeoDataPanel />
+        </SettingItem>
+      </div>
+    </template>
+
     <template v-if="showDnsDiagnostics">
       <div class="settings-section-label">{{ $t('settingsSectionDiagnostics') }}</div>
       <div class="settings-grid">
@@ -171,12 +183,14 @@
 
 <script setup lang="ts">
 import { can } from '@/assembly/backend'
+import { daeCapabilities } from '@/assembly/capabilities'
 import { configs, updateConfigs } from '@/assembly/config'
 import { coreBrand, isCoreUpdateAvailable } from '@/assembly/version'
 import BackendVersion from '@/components/common/BackendVersion.vue'
 import SelectInput, { type SelectOption } from '@/components/common/SelectInput.vue'
 import BackendPortsGrid from '@/components/settings/backend/BackendPortsGrid.vue'
 import BackendSwitch from '@/components/settings/backend/BackendSwitch.vue'
+import DaeGeoDataPanel from '@/components/dae/DaeGeoDataPanel.vue'
 import DaeRuntimePanel from '@/components/dae/DaeRuntimePanel.vue'
 import DnsDiagnostics from '@/components/settings/backend/DnsDiagnostics.vue'
 import SettingItem from '@/components/settings/SettingItem.vue'
@@ -201,6 +215,7 @@ const isVisibleCheckUpgrade = useIsSettingVisible(k.checkCoreUpgrade)
 const isVisibleAutoUpgrade = useIsSettingVisible(k.autoUpgradeCore)
 const isVisibleDnsQuery = useIsSettingVisible(k.DNSQuery)
 const isVisibleDaeRuntime = useIsSettingVisible(k.daeRuntime)
+const isVisibleDaeGeoData = useIsSettingVisible(k.daeGeoData)
 const canShowTunMode = computed(
   () => isVisibleTunMode.value && !activeBackend.value?.disableTunMode,
 )
@@ -218,8 +233,16 @@ const showDaeRuntime = computed(
     activeBackend.value?.type === 'dae' &&
     (can('runtimeSettings') || can('lifecycleControl') || can('datapath')),
 )
+const showDaeGeoData = computed(
+  () =>
+    isVisibleDaeGeoData.value &&
+    activeBackend.value?.type === 'dae' &&
+    daeCapabilities.value?.resources.geodata?.available === true,
+)
 const showDnsDiagnostics = computed(
-  () => isVisibleDnsQuery.value && (can('dnsQuery') || can('dnsCache') || can('dnsLog')),
+  () =>
+    isVisibleDnsQuery.value &&
+    (can('dnsQuery') || can('dnsCache') || can('dnsLog') || can('dnsRules')),
 )
 const hasVisibleNetworkSettings = computed(
   () =>
@@ -244,6 +267,7 @@ const hasVisibleItems = computed(
     hasVisibleNetworkSettings.value ||
     hasVisibleUpgradeSettings.value ||
     showDaeRuntime.value ||
+    showDaeGeoData.value ||
     showDnsDiagnostics.value,
 )
 

@@ -6,7 +6,9 @@
  * 然后把面板指到 http://127.0.0.1:9527,后端类型选 dae(令牌留空)。
  * 加 --token <secret> 可模拟 honk 的 bearer 鉴权:不带 token 时携带 Authorization 会被 401,
  * 与 honk 的匿名回环规则一致。
+ * 加 --auth password 模拟密码模式:首次连接走 /auth/setup 创建管理员,之后走 /auth/login 拿 session。
  */
+import { randomUUID } from 'node:crypto'
 import { createServer } from 'node:http'
 import { parseArgs } from 'node:util'
 
@@ -27,13 +29,14 @@ const buildFixture = ({ groups, nodes, connections, providers: providerCount }) 
     id: `provider-${i}`,
     name: `provider-${i}`,
     kind: 'subscription',
-    url_redacted: `https://subs.example.com/[redacted]-${i}`,
+    url_redacted: `https://subs.example.com/sub?token=secret-${i}`,
     node_count: 0,
     updated_at: now,
     expires_at: new Date(Date.now() + 86400000 * 30).toISOString(),
     traffic: null,
     status: 'ok',
     last_error: null,
+    download: { route: 'routing', group_id: null },
   }))
 
   const nodeList = Array.from({ length: nodes }, (_, i) => {
@@ -76,7 +79,10 @@ const buildFixture = ({ groups, nodes, connections, providers: providerCount }) 
       name: `Group-${String(i).padStart(3, '0')}`,
       icon: null,
       config_revision: '1',
-      policy: { kind: i % 2 === 0 ? 'selector' : 'urltest', native: 'min_moving_avg' },
+      policy:
+        i % 2 === 0
+          ? { kind: 'selector', native: 'select' }
+          : { kind: 'urltest', native: 'urltest' },
       members,
       config: {
         default_member_id: selected?.id ?? null,
@@ -171,7 +177,7 @@ const buildFixture = ({ groups, nodes, connections, providers: providerCount }) 
     expression: `domain(suffix: example-${i}.com) && port(443)`,
     outbound: groupList[i % groups].name,
     must: i % 8 === 0,
-    source: { file: 'config.dae', line: i + 10 },
+    source: { file: 'config.dae', source_id: 'source-main', line: i + 10, column: 3 },
     kind: 'rule',
   }))
 
@@ -181,11 +187,64 @@ const buildFixture = ({ groups, nodes, connections, providers: providerCount }) 
     expression: 'fallback',
     outbound: groupList[0].name,
     must: false,
-    source: { file: 'config.dae', line: 99 },
+    source: { file: 'config.dae', source_id: 'source-main', line: 99, column: 3 },
     kind: 'fallback',
   })
 
-  return { providerList, nodeList, groupList, connectionList, rules }
+  const dnsRules = {
+    generation_id: 'generation-1',
+    request: [
+      {
+        rule_id: 'dns_request:0',
+        index: 0,
+        expression: 'qname(geosite:cn) -> alidns',
+        action: 'upstream',
+        upstream: 'alidns',
+        source: { file: 'config.dae', source_id: 'source-main', line: 40, column: 7 },
+        kind: 'rule',
+      },
+      {
+        rule_id: 'dns_request:1',
+        index: 1,
+        expression: 'qtype(aaaa) -> reject',
+        action: 'reject',
+        upstream: null,
+        source: { file: 'config.dae', source_id: 'source-main', line: 41, column: 7 },
+        kind: 'rule',
+      },
+      {
+        rule_id: 'dns_request:2',
+        index: 2,
+        expression: 'fallback: googledns',
+        action: 'upstream',
+        upstream: 'googledns',
+        source: { file: 'config.dae', source_id: 'source-main', line: 42, column: 7 },
+        kind: 'fallback',
+      },
+    ],
+    response: [
+      {
+        rule_id: 'dns_response:0',
+        index: 0,
+        expression: 'upstream(googledns) && ip(geoip:private) -> alidns',
+        action: 'requery',
+        upstream: 'alidns',
+        source: { file: 'config.dae', source_id: 'source-main', line: 45, column: 7 },
+        kind: 'rule',
+      },
+      {
+        rule_id: 'dns_response:1',
+        index: 1,
+        expression: 'fallback: accept',
+        action: 'accept',
+        upstream: null,
+        source: null,
+        kind: 'fallback',
+      },
+    ],
+  }
+
+  return { providerList, nodeList, groupList, connectionList, rules, dnsRules }
 }
 
 export const createMockDaeServer = (options = {}) => {
@@ -197,6 +256,7 @@ export const createMockDaeServer = (options = {}) => {
     port = 9527,
     host = '127.0.0.1',
     token = '',
+    auth = 'token',
   } = options
 
   const fixture = buildFixture({ groups, nodes, connections, providers })
@@ -206,17 +266,41 @@ export const createMockDaeServer = (options = {}) => {
   const operations = new Map()
   const probeStamps = []
   let lifecycleState = 'running'
+  let configRevision = 1
+  const recorder = () => ({ allowed: true, mode: 'auto', active: false })
+  const DEFAULT_GEODATA = {
+    source: 'default',
+    geosite: {
+      urls: ['https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/release/geosite.dat'],
+    },
+    geoip: {
+      urls: ['https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/release/geoip.dat'],
+    },
+    auto_update: { enabled: true, interval_hours: 24 },
+    download: { route: 'routing', group_id: null },
+    verify_checksum: true,
+  }
   let runtimeSettings = {
     observed_at: new Date().toISOString(),
     source: 'config',
     log: { level: 'info', buffered_records: 512 },
     dns_log: { max_records: 512 },
     flows: { max_flows: 1024, retention_seconds: 300 },
+    recording: {
+      flows: recorder(),
+      logs: recorder(),
+      dns_log: recorder(),
+      events: { active: true },
+      grace_remaining_seconds: 0,
+    },
+    geodata: structuredClone(DEFAULT_GEODATA),
   }
+  const account = { username: '', password: '' }
+  const sessions = new Set()
   const configSources = [
     {
       id: 'source-main',
-      path: '<redacted>',
+      path: 'config.dae',
       kind: 'main',
       content_sha256: 'a'.repeat(64),
       bytes: 0,
@@ -239,8 +323,11 @@ export const createMockDaeServer = (options = {}) => {
     res.end(payload)
   }
 
-  const fail = (res, status, code, message, headers = {}) => {
-    const payload = JSON.stringify({ error: { code, message }, request_id: 'mock-request' })
+  const fail = (res, status, code, message, headers = {}, details = null) => {
+    const payload = JSON.stringify({
+      error: { code, message, details },
+      request_id: 'mock-request',
+    })
 
     res.writeHead(status, {
       'content-type': 'application/json',
@@ -253,6 +340,16 @@ export const createMockDaeServer = (options = {}) => {
 
   const authorized = (req, res) => {
     const header = req.headers['authorization']
+
+    if (auth === 'password') {
+      if (!sessions.has(String(header).replace(/^Bearer /, ''))) {
+        fail(res, 401, 'authentication_required', 'a live session is required', {
+          'www-authenticate': 'Bearer',
+        })
+        return false
+      }
+      return true
+    }
 
     if (token) {
       if (header !== `Bearer ${token}`) {
@@ -284,11 +381,20 @@ export const createMockDaeServer = (options = {}) => {
       })
     })
 
-  const accept = (res, kind) => {
+  const accept = (res, kind, result = {}) => {
     const id = `op-${operations.size + 1}`
 
-    operations.set(id, { kind, createdAt: Date.now() })
+    operations.set(id, { kind, createdAt: Date.now(), result })
     json(res, { operation_id: id, kind, status: 'queued', href: `/api/v1/operations/${id}` }, 202)
+  }
+
+  const groupConfigDocument = (group) => ({ policy: group.policy, config: group.config })
+
+  const openSession = (res, status) => {
+    const session = randomUUID()
+
+    sessions.add(session)
+    json(res, { token: session, expires_at: new Date(Date.now() + 86400000).toISOString() }, status)
   }
 
   const probeResult = (target, members) => ({
@@ -323,23 +429,86 @@ export const createMockDaeServer = (options = {}) => {
 
     const url = new URL(req.url, `http://${req.headers.host}`)
     const path = url.pathname
+    const passwordMode = auth === 'password'
+    const setupRequired = passwordMode && !account.username
+
+    if (path === '/api' && !req.headers['authorization']) {
+      json(res, {
+        name: 'daeuniverse/native',
+        api_major: 1,
+        links: {
+          auth_setup: passwordMode ? '/api/v1/auth/setup' : null,
+          auth_login: passwordMode ? '/api/v1/auth/login' : null,
+        },
+        auth: { mode: auth, setup_required: setupRequired },
+      })
+      return
+    }
+
+    if (path === '/api/v1/auth/setup' || path === '/api/v1/auth/login') {
+      if (!passwordMode) {
+        fail(res, 404, 'capability_not_supported', 'password mode is off')
+        return
+      }
+
+      readBody(req).then((payload) => {
+        if (path.endsWith('setup')) {
+          if (!setupRequired) {
+            fail(res, 409, 'setup_already_completed', 'an administrator exists')
+            return
+          }
+
+          account.username = String(payload.username ?? '')
+          account.password = String(payload.password ?? '')
+          openSession(res, 201)
+          return
+        }
+
+        if (setupRequired) {
+          fail(res, 409, 'setup_required', 'no administrator exists')
+          return
+        }
+
+        if (payload.username !== account.username || payload.password !== account.password) {
+          fail(res, 401, 'invalid_credentials', 'wrong username or password', {
+            'www-authenticate': 'Bearer',
+          })
+          return
+        }
+
+        openSession(res, 200)
+      })
+      return
+    }
 
     if (!authorized(req, res)) return
 
+    if (path === '/api/v1/auth/logout') {
+      sessions.delete(String(req.headers['authorization']).replace(/^Bearer /, ''))
+      res.writeHead(204, CORS)
+      res.end()
+      return
+    }
+
     if (path === '/api') {
       json(res, {
-        name: 'dae/honk-native',
+        name: 'daeuniverse/native',
         status: 'draft',
         api_major: 1,
         base_path: '/api/v1',
         links: { version: '/api/v1/version' },
+        auth: {
+          mode: auth,
+          setup_required: setupRequired,
+          anonymous_loopback: !token && !passwordMode,
+        },
       })
       return
     }
 
     if (path === '/api/v1/version') {
       json(res, {
-        api: { name: 'dae/honk-native', major: 1, status: 'draft' },
+        api: { name: 'daeuniverse/native', major: 1, status: 'draft' },
         engine: { name: 'dae', version: '1.0.0-mock' },
         build: null,
       })
@@ -358,9 +527,9 @@ export const createMockDaeServer = (options = {}) => {
         resources: {
           config: {
             available: true,
-            content: true,
             writable: true,
-            max_bytes: 1048576,
+            create: true,
+            max_bytes: 61440,
             max_sources: 32,
           },
           config_validate: { available: true, modes: ['syntax', 'full'] },
@@ -371,13 +540,19 @@ export const createMockDaeServer = (options = {}) => {
           memory_history: { available: true, max_window_seconds: 600, max_points: 300 },
           datapath: { available: true, kinds: ['ebpf'], details: ['attachments'] },
           nodes: { available: true, can_manage: true },
-          providers: { available: true, can_refresh: true, can_manage: true, max_page_size: 1000 },
+          providers: {
+            available: true,
+            can_refresh: true,
+            can_manage: true,
+            create_unfetched: true,
+            create_options: { update_interval: 86400, user_agent: 'dae-mock/1.0', cache: true },
+            max_page_size: 1000,
+          },
           groups: { available: true, config_patch: true, selection: true, max_patch_operations: 8 },
           probes: {
             available: true,
             targets: ['node', 'group'],
             kinds: ['tcp_connect', 'http', 'dns'],
-            purposes: ['data', 'dns'],
             transports: ['tcp', 'udp'],
             ip_versions: ['ipv4', 'ipv6', 'any'],
             limits: {
@@ -392,7 +567,14 @@ export const createMockDaeServer = (options = {}) => {
             },
           },
           connections: { available: true, can_close: true, max_bulk_close: 1000 },
-          flows: { available: true, recording: 'on', max_page_size: 200 },
+          flows: {
+            available: true,
+            recording: 'auto',
+            min_flows: 64,
+            max_flows: 10000,
+            retention_seconds: 3600,
+            max_page_size: 200,
+          },
           routing_trace: { available: true, resolve_modes: ['none'], max_addresses: 1 },
           rules: { available: true, max_rules: 1000 },
           events: {
@@ -410,7 +592,10 @@ export const createMockDaeServer = (options = {}) => {
           logs: {
             available: true,
             levels: ['trace', 'debug', 'info', 'warn', 'error'],
-            max_buffered_records: 1000,
+            filters: ['level', 'target'],
+            retention_seconds: 60,
+            min_buffered_records: 64,
+            max_buffered_records: 4096,
           },
           dns_query: { available: true, record_types: ['A', 'AAAA'] },
           dns_cache: {
@@ -421,7 +606,8 @@ export const createMockDaeServer = (options = {}) => {
             flush: true,
             entry_kinds: ['positive', 'negative'],
           },
-          dns_log: { available: true, max_records: 1000, max_page_size: 200 },
+          dns_log: { available: true, min_records: 64, max_records: 2048, max_page_size: 200 },
+          dns_rules: { available: true, max_rules: 4096 },
           runtime_settings: {
             available: true,
             fields: [
@@ -430,13 +616,26 @@ export const createMockDaeServer = (options = {}) => {
               'dns_log.max_records',
               'flows.max_flows',
               'flows.retention_seconds',
+              'record_flows',
+              'record_logs',
+              'record_dns_log',
+              'geodata',
             ],
           },
-          operations: { available: true, retention_seconds: 300 },
+          operations: { available: true, retention_seconds: 300, max_replay_keys: 1024 },
           reload: { available: true },
           suspend: { available: true },
           resume: { available: true },
-          geodata: { available: true, can_update: true, assets: ['geosite', 'geoip'] },
+          geodata: {
+            available: true,
+            can_update: true,
+            assets: ['geosite', 'geoip'],
+            configurable_sources: true,
+            max_urls: 4,
+            interval_hours: { min: 6, max: 168, default: 24 },
+            checksum: 'sha256sum',
+            lifecycle: { file_values: 'start', overrides_persist: true },
+          },
         },
       })
       return
@@ -456,7 +655,7 @@ export const createMockDaeServer = (options = {}) => {
         },
         generation: {
           active_id: 'generation-1',
-          config_revision: '1',
+          config_revision: String(configRevision),
           state: 'active',
           activated_at: new Date(startedAt).toISOString(),
         },
@@ -480,6 +679,15 @@ export const createMockDaeServer = (options = {}) => {
         },
         process: { pid: process.pid, cpu_percent: 1.5 },
         last_reload: null,
+        degradations: [
+          {
+            code: 'store_unavailable',
+            message: 'Persistent store is read-only; overrides last until restart.',
+            details: null,
+            component: 'persistence',
+            since: new Date(startedAt).toISOString(),
+          },
+        ],
       })
       return
     }
@@ -524,12 +732,56 @@ export const createMockDaeServer = (options = {}) => {
 
     if (path === '/api/v1/runtime/settings' && req.method === 'PATCH') {
       readBody(req).then((payload) => {
+        const { geodata, record_flows, record_logs, record_dns_log, ...rest } = payload
+        const recording = structuredClone(runtimeSettings.recording)
+
+        if (record_flows) recording.flows.mode = record_flows
+        if (record_logs) recording.logs.mode = record_logs
+        if (record_dns_log) recording.dns_log.mode = record_dns_log
+
+        let nextGeodata = runtimeSettings.geodata
+
+        if (geodata === null) {
+          nextGeodata = structuredClone(DEFAULT_GEODATA)
+        } else if (geodata) {
+          const known = new Set(fixture.groupList.map((group) => group.id))
+
+          if (geodata.download?.route === 'group' && !known.has(geodata.download.group_id)) {
+            fail(res, 409, 'state_conflict', 'geodata.download.group_id is not a current group.')
+            return
+          }
+
+          nextGeodata = {
+            ...nextGeodata,
+            ...(geodata.geosite || geodata.geoip ? { source: 'override' } : {}),
+            ...(geodata.geosite ? { geosite: geodata.geosite } : {}),
+            ...(geodata.geoip ? { geoip: geodata.geoip } : {}),
+            ...(geodata.auto_update
+              ? { auto_update: { ...nextGeodata.auto_update, ...geodata.auto_update } }
+              : {}),
+            ...(geodata.download
+              ? {
+                  download: {
+                    route: geodata.download.route,
+                    group_id: geodata.download.group_id ?? null,
+                  },
+                }
+              : {}),
+            ...('verify_checksum' in geodata ? { verify_checksum: geodata.verify_checksum } : {}),
+          }
+        }
+
         runtimeSettings = {
           observed_at: new Date().toISOString(),
-          source: 'runtime',
-          log: { ...runtimeSettings.log, ...(payload.log ?? {}) },
-          dns_log: { ...runtimeSettings.dns_log, ...(payload.dns_log ?? {}) },
-          flows: { ...runtimeSettings.flows, ...(payload.flows ?? {}) },
+          source:
+            Object.keys(rest).length || record_flows || record_logs || record_dns_log
+              ? 'runtime'
+              : runtimeSettings.source,
+          log: { ...runtimeSettings.log, ...(rest.log ?? {}) },
+          dns_log: { ...runtimeSettings.dns_log, ...(rest.dns_log ?? {}) },
+          flows: { ...runtimeSettings.flows, ...(rest.flows ?? {}) },
+          recording,
+          geodata: nextGeodata,
         }
         json(res, runtimeSettings)
       })
@@ -548,7 +800,7 @@ export const createMockDaeServer = (options = {}) => {
           id: group.id,
           name: group.name,
           icon: group.icon,
-          config_revision: group.config_revision,
+          config_revision: String(configRevision),
           policy: group.policy,
           member_count: group.members.length,
           selection: {
@@ -560,10 +812,69 @@ export const createMockDaeServer = (options = {}) => {
       return
     }
 
+    const groupConfigMatch = /^\/api\/v1\/groups\/([^/]+)\/config$/.exec(path)
+
+    if (groupConfigMatch) {
+      const group = fixture.groupList.find(
+        (item) => item.id === decodeURIComponent(groupConfigMatch[1]),
+      )
+
+      if (!group) {
+        fail(res, 404, 'resource_not_found', 'unknown group')
+        return
+      }
+
+      const etag = `"${configRevision}"`
+
+      if (req.method === 'PATCH') {
+        const ifMatch = req.headers['if-match']
+
+        if (!ifMatch) {
+          fail(res, 428, 'precondition_required', 'If-Match is required')
+          return
+        }
+
+        if (ifMatch !== etag) {
+          fail(res, 412, 'stale_revision', 'configuration changed')
+          return
+        }
+
+        readBody(req).then((operations) => {
+          const document = structuredClone(groupConfigDocument(group))
+
+          for (const operation of operations) {
+            const [, section, field] = operation.path.split('/')
+
+            if (!['replace', 'add', 'remove'].includes(operation.op)) {
+              fail(res, 422, 'unsupported_value', `op ${operation.op} is not supported by the mock`)
+              return
+            }
+
+            const value = operation.op === 'remove' ? null : operation.value
+
+            if (section === 'policy') document.policy = value
+            else document.config[field] = value
+          }
+
+          group.policy = document.policy
+          group.config = document.config
+          configRevision++
+
+          res.setHeader('etag', `"${configRevision}"`)
+          json(res, groupConfigDocument(group))
+        })
+        return
+      }
+
+      res.setHeader('etag', etag)
+      json(res, groupConfigDocument(group))
+      return
+    }
+
     const groupMatch = /^\/api\/v1\/groups\/([^/]+)$/.exec(path)
 
-    if (groupMatch && req.method === 'PATCH') {
-      accept(res, 'group_update')
+    if (groupMatch && req.method !== 'GET') {
+      fail(res, 405, 'method_not_allowed', 'use PATCH /groups/{group_id}/config')
       return
     }
 
@@ -575,7 +886,7 @@ export const createMockDaeServer = (options = {}) => {
         return
       }
 
-      json(res, group)
+      json(res, { ...group, config_revision: String(configRevision) })
       return
     }
 
@@ -634,7 +945,7 @@ export const createMockDaeServer = (options = {}) => {
       return
     }
 
-    if (path === '/api/v1/nodes') {
+    if (path === '/api/v1/nodes' && req.method === 'GET') {
       json(res, {
         observed_at: new Date().toISOString(),
         nodes: fixture.nodeList,
@@ -643,7 +954,7 @@ export const createMockDaeServer = (options = {}) => {
       return
     }
 
-    if (path === '/api/v1/providers') {
+    if (path === '/api/v1/providers' && req.method === 'GET') {
       json(res, { providers: fixture.providerList, next_cursor: null })
       return
     }
@@ -657,8 +968,16 @@ export const createMockDaeServer = (options = {}) => {
       json(res, {
         generation_id: 'generation-1',
         rules: fixture.rules,
-        fallback: { outbound: fixture.groupList[0].name, source: { file: 'config.dae', line: 99 } },
+        fallback: {
+          outbound: fixture.groupList[0].name,
+          source: { file: 'config.dae', source_id: 'source-main', line: 99, column: 3 },
+        },
       })
+      return
+    }
+
+    if (path === '/api/v1/dns/rules') {
+      json(res, fixture.dnsRules)
       return
     }
 
@@ -686,7 +1005,8 @@ export const createMockDaeServer = (options = {}) => {
     }
 
     if (/^\/api\/v1\/connections\/[^/]+$/.test(path) && req.method === 'DELETE') {
-      json(res, { closed: 1, skipped: 0 })
+      res.writeHead(204, CORS)
+      res.end()
       return
     }
 
@@ -707,6 +1027,11 @@ export const createMockDaeServer = (options = {}) => {
       req.on('data', (chunk) => (body += chunk))
       req.on('end', () => {
         const payload = JSON.parse(body || '{}')
+
+        if ('purpose' in payload) {
+          fail(res, 400, 'invalid_request', 'unknown field `purpose`')
+          return
+        }
 
         if (payload.target?.type === 'node') {
           lastProbe = probeResult(payload.target, [payload.target.node_id])
@@ -747,14 +1072,36 @@ export const createMockDaeServer = (options = {}) => {
         created_at: new Date(operation.createdAt).toISOString(),
         started_at: new Date(operation.createdAt).toISOString(),
         finished_at: new Date().toISOString(),
-        result: operation.kind === 'probe' ? lastProbe : {},
+        result: operation.kind === 'probe' ? lastProbe : operation.result,
         error: null,
       })
       return
     }
 
     if (path === '/api/v1/geodata') {
-      json(res, { observed_at: new Date().toISOString(), assets: [] })
+      const settings = runtimeSettings.geodata
+      const asset = (kind, size) => ({
+        kind,
+        sha256: 'b'.repeat(64),
+        size_bytes: String(size),
+        modified_at: new Date(startedAt - 86400000).toISOString(),
+        source_redacted: settings[kind].urls[0],
+        fetched_url_redacted: settings[kind].urls[0],
+        verified: true,
+        download_route: settings.download,
+      })
+
+      json(res, {
+        observed_at: new Date().toISOString(),
+        assets: [asset('geosite', 4404019), asset('geoip', 17406771)],
+        last_checked_at: new Date(startedAt).toISOString(),
+        last_updated_at: new Date(startedAt - 86400000).toISOString(),
+        next_check_at: settings.auto_update.enabled
+          ? new Date(startedAt + settings.auto_update.interval_hours * 3600000).toISOString()
+          : null,
+        last_error: null,
+        required_codes: { geosite: ['cn', 'geolocation-!cn', 'private'], geoip: ['cn', 'private'] },
+      })
       return
     }
 
@@ -769,32 +1116,39 @@ export const createMockDaeServer = (options = {}) => {
     }
 
     if (path === '/api/v1/dns/query') {
-      const domain = url.searchParams.get('domain') ?? 'example.com'
-      const types = url.searchParams.getAll('type')
+      if (req.method !== 'POST') {
+        fail(res, 405, 'method_not_allowed', 'use POST')
+        return
+      }
 
-      json(res, {
-        domain,
-        cache_mode: 'normal',
-        query_time: new Date().toISOString(),
-        results: (types.length ? types : ['A']).map((type) => ({
-          type,
-          cached: false,
-          cache_entry_id: null,
-          upstream: 'udp://1.1.1.1:53',
-          route: { source: 'dns.routing', rule: `domain(${domain})` },
-          status: 'NOERROR',
-          elapsed_ms: 12,
-          question: { name: `${domain}.`, type },
-          answers: [
-            {
-              name: `${domain}.`,
-              type,
-              class: 'IN',
-              ttl: 300,
-              data: type === 'AAAA' ? '2606:2800:220:1:248:1893:25c8:1946' : '93.184.216.34',
-            },
-          ],
-        })),
+      readBody(req).then((payload) => {
+        const domain = payload.domain ?? 'example.com'
+        const types = payload.type ?? []
+
+        json(res, {
+          domain,
+          cache_mode: 'normal',
+          query_time: new Date().toISOString(),
+          results: (types.length ? types : ['A']).map((type) => ({
+            type,
+            cached: false,
+            cache_entry_id: null,
+            upstream: 'udp://1.1.1.1:53',
+            route: { source: 'dns.routing', rule: `domain(${domain})` },
+            status: 'NOERROR',
+            elapsed_ms: 12,
+            question: { name: `${domain}.`, type },
+            answers: [
+              {
+                name: `${domain}.`,
+                type,
+                class: 'IN',
+                ttl: 300,
+                data: type === 'AAAA' ? '2606:2800:220:1:248:1893:25c8:1946' : '93.184.216.34',
+              },
+            ],
+          })),
+        })
       })
       return
     }
@@ -894,6 +1248,7 @@ export const createMockDaeServer = (options = {}) => {
             chain: flow.chain,
             chain_source: 'captured',
             rule_id: flow.rule_id,
+            rule_generation_id: 'generation-1',
             rule_expression: flow.rule_expression,
             rule_source: 'userspace',
             domain_source: 'sniffed',
@@ -938,6 +1293,7 @@ export const createMockDaeServer = (options = {}) => {
         chain: [],
         chain_source: 'captured',
         rule_id: 'rule-1',
+        rule_generation_id: 'generation-1',
         rule_expression: 'domain(suffix: example.com)',
         rule_source: 'userspace',
         domain_source: 'sniffed',
@@ -1006,6 +1362,7 @@ export const createMockDaeServer = (options = {}) => {
         entries,
         total: entries.length,
         next_cursor: null,
+        usage: { entries: String(entries.length), entry_capacity: '4096' },
       })
       return
     }
@@ -1083,8 +1440,27 @@ export const createMockDaeServer = (options = {}) => {
           last_error: null,
           checked_at: new Date().toISOString(),
           attachments: [
-            { name: 'tproxy_ingress', interface: 'eth0', direction: 'ingress', state: 'attached' },
-            { name: 'tproxy_egress', interface: 'eth0', direction: 'egress', state: 'attached' },
+            {
+              name: 'tproxy_ingress',
+              kind: 'interface',
+              interface: 'eth0',
+              direction: 'ingress',
+              state: 'attached',
+            },
+            {
+              name: 'tproxy_egress',
+              kind: 'interface',
+              interface: 'eth0',
+              direction: 'egress',
+              state: 'attached',
+            },
+            { name: 'connect4', kind: 'cgroup', cgroup: '/', state: 'attached' },
+            {
+              name: 'sk_msg_verdict',
+              kind: 'other',
+              hook: 'sk_msg verdict on the socket map',
+              state: 'attached',
+            },
           ],
           maps: {
             state: 'ready',
@@ -1107,6 +1483,7 @@ export const createMockDaeServer = (options = {}) => {
               sampled_at: sampledAt,
               rss_bytes: String(48 * 1024 * 1024 + i * 4096),
               cgroup_current_bytes: null,
+              kernel_ebpf_bytes: null,
             }
           : {
               sampled_at: sampledAt,
@@ -1128,10 +1505,67 @@ export const createMockDaeServer = (options = {}) => {
     if (path === '/api/v1/config') {
       json(res, {
         generation_id: 'instance-mock:1',
-        revision: 'revision-1',
+        revision: String(configRevision),
         sources: configSources,
         diagnostics: [],
-        secrets_redacted: true,
+        secrets_redacted: false,
+      })
+      return
+    }
+
+    if (path === '/api/v1/config/sources' && req.method === 'POST') {
+      readBody(req).then((payload) => {
+        const sourcePath = String(payload.path ?? '')
+
+        if (!/^(?!\/)(?!.*\/\/)(?!(?:.*\/)?\.\.?(?:\/|$)).*\.dae$/.test(sourcePath)) {
+          fail(res, 400, 'invalid_request', 'Source path must be a relative .dae path.')
+          return
+        }
+
+        if (configSources.some((source) => source.path === sourcePath)) {
+          fail(res, 409, 'state_conflict', 'A configuration source already exists at this path.')
+          return
+        }
+
+        if (!sourcePath.startsWith('config.d/')) {
+          fail(
+            res,
+            422,
+            'unsupported_value',
+            'Configuration validation failed.',
+            {},
+            {
+              diagnostics: [
+                {
+                  level: 'error',
+                  source_id: 'source-main',
+                  line: null,
+                  column: null,
+                  span: null,
+                  code: 'source-not-included',
+                  message: 'No include pattern loads this path.',
+                },
+              ],
+            },
+          )
+          return
+        }
+
+        const content = String(payload.content ?? '')
+
+        configSources.push({
+          id: `source-${configSources.length}`,
+          path: sourcePath,
+          kind: 'include',
+          content_sha256: 'c'.repeat(64),
+          bytes: content.length,
+          writable: true,
+          loaded_at: new Date().toISOString(),
+          line_count: content.split('\n').length,
+          content,
+        })
+        configRevision++
+        accept(res, 'reload')
       })
       return
     }
@@ -1167,7 +1601,13 @@ export const createMockDaeServer = (options = {}) => {
         return
       }
 
-      json(res, source)
+      const content = { ...source }
+
+      delete content.writable
+      delete content.loaded_at
+
+      res.setHeader('etag', `"${source.content_sha256}"`)
+      json(res, content)
       return
     }
 
@@ -1210,12 +1650,21 @@ export const createMockDaeServer = (options = {}) => {
         }
 
         fixture.nodeList.push(node)
-        json(res, node, 201)
+        configRevision++
+        accept(res, 'node_create', node)
       })
       return
     }
 
     const nodeMatch = /^\/api\/v1\/nodes\/([^/]+)$/.exec(path)
+
+    if (nodeMatch && req.method === 'GET') {
+      const node = fixture.nodeList.find((item) => item.id === decodeURIComponent(nodeMatch[1]))
+
+      if (!node) fail(res, 404, 'resource_not_found', 'unknown node')
+      else json(res, node)
+      return
+    }
 
     if (nodeMatch && req.method === 'DELETE') {
       const nodeId = decodeURIComponent(nodeMatch[1])
@@ -1229,17 +1678,27 @@ export const createMockDaeServer = (options = {}) => {
 
     if (path === '/api/v1/providers' && req.method === 'POST') {
       readBody(req).then((payload) => {
+        const unknown = Object.keys(payload).filter(
+          (key) => !['name', 'kind', 'url', 'update_interval', 'user_agent', 'cache'].includes(key),
+        )
+
+        if (unknown.length) {
+          fail(res, 400, 'invalid_request', `unknown field ${unknown[0]}`)
+          return
+        }
+
         const provider = {
           id: `provider-${fixture.providerList.length}`,
           name: String(payload.name ?? 'provider'),
           kind: 'subscription',
-          url_redacted: `provider-${fixture.providerList.length}`,
+          url_redacted: String(payload.url ?? ''),
           node_count: 0,
           updated_at: null,
           expires_at: null,
           traffic: null,
           status: 'stale',
           last_error: null,
+          download: { route: 'routing', group_id: null },
         }
 
         fixture.providerList.push(provider)
@@ -1249,6 +1708,16 @@ export const createMockDaeServer = (options = {}) => {
     }
 
     const providerMatch = /^\/api\/v1\/providers\/([^/]+)$/.exec(path)
+
+    if (providerMatch && req.method === 'GET') {
+      const provider = fixture.providerList.find(
+        (item) => item.id === decodeURIComponent(providerMatch[1]),
+      )
+
+      if (!provider) fail(res, 404, 'resource_not_found', 'unknown provider')
+      else json(res, provider)
+      return
+    }
 
     if (providerMatch && req.method === 'DELETE') {
       const providerId = decodeURIComponent(providerMatch[1])
@@ -1318,6 +1787,7 @@ if (isMain) {
       providers: { type: 'string', default: '2' },
       port: { type: 'string', default: '9527' },
       token: { type: 'string', default: '' },
+      auth: { type: 'string', default: 'token' },
     },
   })
 
@@ -1328,6 +1798,7 @@ if (isMain) {
     providers: Number(values.providers),
     port: Number(values.port),
     token: values.token,
+    auth: values.auth,
   })
 
   console.log(`mock dae api: http://${host}:${port}`)

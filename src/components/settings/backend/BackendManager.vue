@@ -69,7 +69,7 @@
             <button
               class="btn btn-circle btn-ghost btn-xs text-base-content/40 hover:text-error"
               :aria-label="$t('delete')"
-              @click="removeBackend(element.uuid)"
+              @click="handleRemove(element)"
             >
               <TrashIcon class="h-4 w-4" />
             </button>
@@ -125,6 +125,7 @@
 </template>
 
 <script setup lang="ts">
+import { logoutDae } from '@/api/dae-auth'
 import { probeBackend } from '@/assembly/probe'
 import BackendStatusDot from '@/components/common/BackendStatusDot.vue'
 import DialogWrapper from '@/components/common/DialogWrapper.vue'
@@ -230,6 +231,7 @@ watch(
       port: backend.port,
       secondaryPath: backend.secondaryPath,
       password: backend.password,
+      ...(backend.username ? { username: backend.username } : {}),
       label: backend.label || '',
       disableUpgradeCore: backend.disableUpgradeCore || false,
       disableTunMode: backend.disableTunMode || false,
@@ -251,6 +253,11 @@ const switchTo = (uuid: string) => {
 }
 
 const openEdit = (uuid: string) => openBackendManager({ mode: 'edit', uuid })
+
+const handleRemove = (backend: Backend) => {
+  logoutDae(backend)
+  removeBackend(backend.uuid)
+}
 
 const cameFromList = ref(false)
 
@@ -281,12 +288,20 @@ const handleSave = async () => {
 
   try {
     const composed: Omit<Backend, 'uuid'> = { ...form }
-    const result = await probeBackend({
-      uuid: current.mode === 'edit' ? current.uuid : '',
-      ...composed,
-    })
+    const result = await probeBackend(
+      {
+        uuid: current.mode === 'edit' ? current.uuid : '',
+        ...composed,
+      },
+      undefined,
+      undefined,
+      true,
+    )
 
     if (!result.ok) {
+      if (result.kind === 'unauthorized') {
+        showNotification({ content: t('diagnosisUnauthorized'), type: 'alert-error' })
+      }
       reachability.retry()
       return
     }

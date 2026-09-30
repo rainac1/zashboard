@@ -99,6 +99,12 @@ export const SETTINGS_CATEGORIES: SettingsCategory[] = [
         keywords: ['dae', 'runtime', 'log', 'suspend'],
       },
       {
+        key: `${SETTINGS_MENU_KEY.backend}.daeGeoData`,
+        label: 'daeGeoData',
+        section: 'settingsSectionCoreOperations',
+        keywords: ['dae', 'geodata', 'geosite', 'geoip'],
+      },
+      {
         key: `${SETTINGS_MENU_KEY.backend}.dnsQuery`,
         label: 'DNSQuery',
         section: 'settingsSectionDiagnostics',

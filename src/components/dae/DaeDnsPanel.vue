@@ -1,6 +1,9 @@
 <template>
   <div class="flex flex-col gap-3">
-    <div class="flex flex-wrap items-center gap-2">
+    <div
+      v-if="view !== 'rules'"
+      class="flex flex-wrap items-center gap-2"
+    >
       <TextInput
         v-model="filter.name"
         class="w-56"
@@ -31,6 +34,13 @@
       >
         {{ $t('daeDropCacheName') }}
       </button>
+      <span
+        v-if="view === 'cache' && usage"
+        class="text-base-content/50 ml-auto text-xs"
+      >
+        {{ $t('daeDnsCacheUsage') }}: {{ usage.entries }}
+        <template v-if="usage.entry_capacity">/ {{ usage.entry_capacity }}</template>
+      </span>
     </div>
 
     <div
@@ -62,6 +72,35 @@
         >
           <TrashIcon class="h-4 w-4" />
         </button>
+      </div>
+    </div>
+
+    <div
+      v-else-if="view === 'rules'"
+      class="flex flex-col gap-3"
+    >
+      <div
+        v-for="list in ruleLists"
+        :key="list.key"
+        class="flex flex-col gap-1"
+      >
+        <div class="text-base-content/70 text-xs">{{ $t(list.label) }}</div>
+        <div
+          v-for="rule in list.rules"
+          :key="rule.rule_id"
+          class="base-container flex items-center gap-2 p-2 text-xs"
+        >
+          <span class="text-base-content/50 w-6 flex-none text-right">{{ rule.index }}</span>
+          <span
+            class="min-w-0 flex-1 font-mono break-all"
+            :title="rule.source ? `${rule.source.file}:${rule.source.line}` : undefined"
+          >
+            {{ rule.expression }}
+          </span>
+          <span class="bg-base-200 rounded-full px-2 py-0.5">
+            {{ rule.upstream ? `${rule.action} · ${rule.upstream}` : rule.action }}
+          </span>
+        </div>
       </div>
     </div>
 
@@ -103,29 +142,46 @@ import {
   deleteDaeDnsCacheName,
   fetchDaeDnsCache,
   fetchDaeDnsLog,
+  fetchDaeDnsRules,
 } from '@/assembly/dae'
 import TextInput from '@/components/common/TextInput.vue'
 import { getRequestErrorMessage } from '@/helper/request-error'
 import { fromNow } from '@/helper/utils'
-import type { DaeDnsCacheEntry, DaeDnsLogRecord } from '@/types'
+import type { DaeDnsCacheList, DaeDnsCacheEntry, DaeDnsLogRecord, DaeDnsRuleList } from '@/types'
 import { TrashIcon } from '@heroicons/vue/24/outline'
 import { computed, reactive, ref, watch } from 'vue'
 
-const props = withDefaults(defineProps<{ view?: 'cache' | 'log' }>(), { view: 'cache' })
+const props = withDefaults(defineProps<{ view?: 'cache' | 'log' | 'rules' }>(), {
+  view: 'cache',
+})
 
 const PAGE_SIZE = 200
 
 const view = computed(() => props.view)
 const entries = ref<DaeDnsCacheEntry[]>([])
 const records = ref<DaeDnsLogRecord[]>([])
+const usage = ref<DaeDnsCacheList['usage']>()
+const dnsRules = ref<DaeDnsRuleList | null>(null)
+
+const ruleLists = computed(() =>
+  dnsRules.value
+    ? [
+        { key: 'request', label: 'daeDnsRequestRules', rules: dnsRules.value.request },
+        { key: 'response', label: 'daeDnsResponseRules', rules: dnsRules.value.response },
+      ]
+    : [],
+)
 const loading = ref(false)
 const errorMessage = ref('')
 
 const filter = reactive({ name: '', type: '' })
 
-const isEmpty = computed(() =>
-  view.value === 'cache' ? !entries.value.length : !records.value.length,
-)
+const isEmpty = computed(() => {
+  if (view.value === 'rules') return !ruleLists.value.length
+  if (view.value === 'cache') return !entries.value.length
+
+  return !records.value.length
+})
 
 const run = async (action: () => Promise<void>) => {
   if (loading.value) return
@@ -150,8 +206,16 @@ const reload = () =>
       type: filter.type || undefined,
     }
 
+    if (view.value === 'rules') {
+      dnsRules.value = await fetchDaeDnsRules()
+      return
+    }
+
     if (view.value === 'cache') {
-      entries.value = (await fetchDaeDnsCache(params)).entries
+      const list = await fetchDaeDnsCache(params)
+
+      entries.value = list.entries
+      usage.value = list.usage
       return
     }
 
@@ -167,9 +231,10 @@ const dropEntry = (entryId: string) =>
 const dropByName = () =>
   run(async () => {
     await deleteDaeDnsCacheName(filter.name, filter.type || undefined)
-    entries.value = (
-      await fetchDaeDnsCache({ limit: PAGE_SIZE, name: filter.name || undefined })
-    ).entries
+    const list = await fetchDaeDnsCache({ limit: PAGE_SIZE, name: filter.name || undefined })
+
+    entries.value = list.entries
+    usage.value = list.usage
   })
 
 watch(view, reload)

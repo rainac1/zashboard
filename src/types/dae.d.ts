@@ -15,6 +15,33 @@ export type DaeAvailable = {
   available: boolean
 }
 
+export type DaeAuthMode = 'token' | 'password'
+
+export type DaeDiscovery = {
+  name: string
+  api_major: number
+  status?: string
+  base_path?: string
+  links: Record<string, unknown>
+  auth: {
+    mode: DaeAuthMode
+    setup_required: boolean
+    anonymous_loopback?: boolean
+  }
+}
+
+export type DaeAuthSession = {
+  token: string
+  expires_at: DaeTimestamp
+}
+
+export type DaeGeoDataDownloadRoute = 'routing' | 'group' | 'direct'
+
+export type DaeGeoDataDownload = {
+  route: DaeGeoDataDownloadRoute
+  group_id: string | null
+}
+
 export type DaeCapabilities = {
   observed_at: DaeTimestamp
   profiles: string[]
@@ -24,60 +51,97 @@ export type DaeCapabilities = {
     max_json_body_bytes: number
   }
   resources: {
-    config: DaeAvailable & {
-      content?: boolean
+    config?: DaeAvailable & {
       writable?: boolean
+      create?: boolean
       max_bytes?: number
       max_sources?: number
     }
-    config_validate: DaeAvailable & { modes?: string[] }
+    config_validate?: DaeAvailable & { modes?: string[] }
     runtime: DaeAvailable
-    runtime_memory: DaeAvailable & { metrics?: string[] }
-    runtime_outbounds: DaeAvailable
-    traffic_history: DaeAvailable & { max_window_seconds?: number; max_points?: number }
-    memory_history: DaeAvailable & { max_window_seconds?: number; max_points?: number }
-    datapath: DaeAvailable & { kinds?: string[]; details?: string[] }
-    nodes: DaeAvailable & { can_manage?: boolean }
-    providers: DaeAvailable & {
+    runtime_memory?: DaeAvailable & { metrics?: string[] }
+    runtime_outbounds?: DaeAvailable
+    traffic_history?: DaeAvailable & { max_window_seconds?: number; max_points?: number }
+    memory_history?: DaeAvailable & { max_window_seconds?: number; max_points?: number }
+    datapath?: DaeAvailable & { kinds?: string[]; details?: string[] }
+    nodes?: DaeAvailable & { can_manage?: boolean }
+    providers?: DaeAvailable & {
       can_refresh?: boolean
       can_manage?: boolean
+      create_unfetched?: boolean
+      create_options?: {
+        update_interval?: number
+        user_agent?: string
+        cache?: boolean
+      }
       max_page_size?: number
     }
-    groups: DaeAvailable & {
+    groups?: DaeAvailable & {
       config_patch?: boolean
       selection?: boolean
       max_patch_operations?: number
     }
-    probes: DaeAvailable & {
+    probes?: DaeAvailable & {
       targets?: string[]
       kinds?: string[]
-      purposes?: string[]
       transports?: string[]
       ip_versions?: string[]
     }
-    connections: DaeAvailable & { can_close?: boolean; max_bulk_close?: number }
-    flows: DaeAvailable & { recording?: string; max_page_size?: number }
-    routing_trace: DaeAvailable
-    rules: DaeAvailable & { max_rules?: number }
-    events: DaeAvailable & { kinds?: string[]; heartbeat_seconds?: number }
-    logs: DaeAvailable & { levels?: string[]; max_buffered_records?: number }
-    dns_query: DaeAvailable & { record_types?: string[] }
-    dns_cache: DaeAvailable & {
+    connections?: DaeAvailable & { can_close?: boolean; max_bulk_close?: number }
+    flows?: DaeAvailable & {
+      recording?: 'off' | 'on' | 'auto' | 'sampled'
+      min_flows?: number
+      max_flows?: number
+      retention_seconds?: number
+      max_page_size?: number
+    }
+    routing_trace?: DaeAvailable
+    rules?: DaeAvailable & { max_rules?: number }
+    events?: DaeAvailable & { kinds?: string[]; heartbeat_seconds?: number }
+    logs?: DaeAvailable & {
+      levels?: string[]
+      filters?: ('level' | 'target')[]
+      retention_seconds?: number
+      min_buffered_records?: number
+      max_buffered_records?: number
+    }
+    dns_query?: DaeAvailable & { record_types?: string[] }
+    dns_cache?: DaeAvailable & {
       read?: boolean
       delete_entry?: boolean
       delete_name?: boolean
       flush?: boolean
       entry_kinds?: string[]
     }
-    dns_log: DaeAvailable & { max_records?: number; max_page_size?: number }
-    runtime_settings: DaeAvailable & { fields?: string[] }
-    operations: DaeAvailable & { retention_seconds?: number }
-    reload: DaeAvailable
-    suspend: DaeAvailable
-    resume: DaeAvailable
-    geodata: DaeAvailable & { can_update?: boolean; assets?: string[] }
+    dns_log?: DaeAvailable & { min_records?: number; max_records?: number; max_page_size?: number }
+    dns_rules?: DaeAvailable & { max_rules?: number }
+    runtime_settings?: DaeAvailable & { fields?: DaeRuntimeSettingField[] }
+    operations?: DaeAvailable & { retention_seconds?: number; max_replay_keys?: number }
+    reload?: DaeAvailable
+    suspend?: DaeAvailable
+    resume?: DaeAvailable
+    geodata?: DaeAvailable & {
+      can_update?: boolean
+      assets?: string[]
+      configurable_sources?: boolean
+      max_urls?: number
+      interval_hours?: { min: number; max: number; default: number }
+      checksum?: 'sha256sum' | 'pinned' | null
+      lifecycle?: { file_values: 'start' | 'activation'; overrides_persist: boolean }
+    }
   }
 }
+
+export type DaeRuntimeSettingField =
+  | 'log.level'
+  | 'log.buffered_records'
+  | 'dns_log.max_records'
+  | 'flows.max_flows'
+  | 'flows.retention_seconds'
+  | 'record_flows'
+  | 'record_logs'
+  | 'record_dns_log'
+  | 'geodata'
 
 export type DaeHealthObservation = {
   transport: 'tcp' | 'udp'
@@ -111,7 +175,7 @@ export type DaeNodeList = {
 }
 
 export type DaeGroupPolicy = {
-  kind: 'selector' | 'urltest' | 'loadbalance' | 'fallback' | 'random' | 'score'
+  kind: 'selector' | 'urltest' | 'loadbalance' | 'fallback' | 'random' | 'score' | 'fixed'
   native: string
 }
 
@@ -135,6 +199,22 @@ export type DaeGroupCapabilities = {
   probe_transports: string[]
 }
 
+export type DaeGroupConfig = {
+  default_member_id: string | null
+  final_outbound: string | null
+  check_url: string | null
+  check_interval: number | null
+  tolerance: number | null
+  idle_timeout: number | null
+  interrupt_connections: boolean | null
+  [extension: `x-${string}`]: Record<string, unknown> | undefined
+}
+
+export type DaeGroupConfigDocument = {
+  policy: DaeGroupPolicy
+  config: DaeGroupConfig
+}
+
 export type DaeGroup = {
   id: string
   name: string
@@ -142,15 +222,7 @@ export type DaeGroup = {
   config_revision: string
   policy: DaeGroupPolicy
   members: DaeGroupMember[]
-  config: {
-    default_member_id: string | null
-    final_outbound: string | null
-    check_url: string | null
-    check_interval: number | null
-    tolerance: number | null
-    idle_timeout: number | null
-    interrupt_connections: boolean
-  }
+  config: DaeGroupConfig
   runtime: {
     selection: { tcp: DaeGroupSelection | null; udp: DaeGroupSelection | null }
     health: (DaeHealthObservation & { member_id: string })[]
@@ -183,6 +255,16 @@ export type DaeProvider = {
   } | null
   status: 'ok' | 'stale' | 'error'
   last_error: { code: string; message: string } | null
+  download?: DaeGeoDataDownload | null
+}
+
+export type DaeProviderCreate = {
+  name: string
+  kind: 'subscription'
+  url: string
+  update_interval?: number
+  user_agent?: string
+  cache?: boolean
 }
 
 export type DaeProviderList = {
@@ -190,20 +272,43 @@ export type DaeProviderList = {
   next_cursor: string | null
 }
 
+export type DaeRuleSource = {
+  file: string
+  source_id: string
+  line: number
+  column: number | null
+} | null
+
 export type DaeRoutingRule = {
   rule_id: string
   index: number
   expression: string
   outbound: string
   must: boolean
-  source: { file: string; line: number } | null
+  source: DaeRuleSource
   kind: 'rule' | 'fallback'
 }
 
 export type DaeRuleList = {
   generation_id: string
   rules: DaeRoutingRule[]
-  fallback: { outbound: string; source: { file: string; line: number } | null }
+  fallback: { outbound: string; source: DaeRuleSource }
+}
+
+export type DaeDnsRoutingRule = {
+  rule_id: string
+  index: number
+  expression: string
+  action: 'upstream' | 'asis' | 'reject' | 'accept' | 'requery'
+  upstream: string | null
+  source: DaeRuleSource
+  kind: 'rule' | 'fallback'
+}
+
+export type DaeDnsRuleList = {
+  generation_id: string
+  request: DaeDnsRoutingRule[]
+  response: DaeDnsRoutingRule[]
 }
 
 export type DaeRuntime = {
@@ -246,6 +351,14 @@ export type DaeRuntime = {
     finished_at: DaeTimestamp | null
     error: { code: string; message: string } | null
   } | null
+  degradations?: DaeDegradation[]
+}
+
+export type DaeDegradation = {
+  code: string
+  message: string
+  component: string
+  since: DaeTimestamp
 }
 
 export type DaeRuntimeMemory = {
@@ -275,6 +388,8 @@ export type DaeRuntimeOutbounds = {
   outbounds: DaeOutboundCounters[]
 }
 
+export type DaeRuleProvenance = 'kernel' | 'userspace' | 'recomputed' | 'unknown'
+
 export type DaeConnection = {
   id: string
   flow_id: string | null
@@ -288,7 +403,7 @@ export type DaeConnection = {
   chain_source: string
   rule_id: string | null
   rule_expression: string | null
-  rule_source: string
+  rule_source: DaeRuleProvenance
   ingress: 'lan' | 'wan' | null
   domain_source: string | null
   started_at: DaeTimestamp | null
@@ -313,7 +428,7 @@ export type DaeConnectionList = {
 export type DaeLogRecord = {
   ts: DaeTimestamp
   level: 'trace' | 'debug' | 'info' | 'warn' | 'error'
-  target: string
+  target: string | null
   message: string
   fields: Record<string, unknown> | null
 }
@@ -362,7 +477,6 @@ export type DaeProbeResult = {
 export type DaeProbeRequest = {
   target: { type: 'node'; node_id: string } | { type: 'group'; group_id: string }
   kind: 'tcp_connect' | 'http' | 'dns'
-  purpose: 'data' | 'dns'
   transport: ('tcp' | 'udp')[]
   ip_version: 'ipv4' | 'ipv6' | 'any'
   members?: 'direct' | 'leaves' | string[]
@@ -396,23 +510,76 @@ export type DaeDnsQueryResponse = {
   results: DaeDnsQueryResult[]
 }
 
+export type DaeGeoAsset = {
+  kind: 'geosite' | 'geoip'
+  sha256: string
+  size_bytes: DaeUInt64
+  modified_at: DaeTimestamp | null
+  source_redacted: string | null
+  fetched_url_redacted?: string | null
+  verified?: boolean
+  download_route?: DaeGeoDataDownload | null
+}
+
 export type DaeGeoData = {
   observed_at: DaeTimestamp
-  assets: {
-    kind: 'geosite' | 'geoip'
-    sha256: string
-    size_bytes: DaeUInt64
-    modified_at: DaeTimestamp | null
-    source_redacted: string | null
-  }[]
+  assets: DaeGeoAsset[]
+  last_checked_at?: DaeTimestamp | null
+  last_updated_at?: DaeTimestamp | null
+  next_check_at?: DaeTimestamp | null
+  last_error?: { code: string; message: string } | null
+  required_codes?: Record<string, string[]>
+}
+
+export type DaeGeoDataSettings = {
+  source: 'config' | 'override' | 'default'
+  geosite: { urls: string[] }
+  geoip: { urls: string[] }
+  auto_update: { enabled: boolean; interval_hours: number }
+  download: DaeGeoDataDownload
+  verify_checksum?: boolean
+}
+
+export type DaeGeoDataSettingsPatch = {
+  geosite?: { urls: string[] }
+  geoip?: { urls: string[] }
+  auto_update?: { enabled?: boolean; interval_hours?: number }
+  download?: { route: DaeGeoDataDownloadRoute; group_id?: string }
+  verify_checksum?: boolean
+} | null
+
+export type DaeRecorderMode = 'on' | 'off' | 'auto'
+
+export type DaeRecorderState = {
+  allowed: boolean
+  mode: DaeRecorderMode
+  active: boolean
 }
 
 export type DaeRuntimeSettings = {
   observed_at: DaeTimestamp
   source: 'config' | 'runtime'
-  log: { level: string; buffered_records: number }
+  log?: { level?: string; buffered_records?: number }
   dns_log?: { max_records: number }
-  flows?: { max_flows: number; retention_seconds: number }
+  flows?: { max_flows?: number; retention_seconds?: number }
+  recording?: {
+    flows?: DaeRecorderState
+    logs?: DaeRecorderState
+    dns_log?: DaeRecorderState
+    events?: { active: boolean }
+    grace_remaining_seconds?: number
+  }
+  geodata?: DaeGeoDataSettings
+}
+
+export type DaeRuntimeSettingsPatch = {
+  log?: { level?: string; buffered_records?: number }
+  dns_log?: { max_records: number }
+  flows?: { max_flows?: number; retention_seconds?: number }
+  record_flows?: DaeRecorderMode
+  record_logs?: DaeRecorderMode
+  record_dns_log?: DaeRecorderMode
+  geodata?: DaeGeoDataSettingsPatch
 }
 
 export type DaeConnectionRawMessage = {
@@ -444,8 +611,9 @@ export type DaeFlowSummary = {
   chain: string[]
   chain_source: string
   rule_id: string | null
+  rule_generation_id: string | null
   rule_expression: string | null
-  rule_source: string
+  rule_source: DaeRuleProvenance
   domain_source: string | null
   observed_by: string
   started_at: DaeTimestamp
@@ -509,6 +677,7 @@ export type DaeDnsCacheList = {
   entries: DaeDnsCacheEntry[]
   total: number
   next_cursor: string | null
+  usage?: { entries: DaeUInt64; entry_capacity: DaeUInt64 | null }
 }
 
 export type DaeDnsLogRecord = {
@@ -578,16 +747,20 @@ export type DaeRoutingTrace = {
   evaluations: DaeTraceEvaluation[]
 }
 
-export type DaeConfigSource = {
+export type DaeConfigSourceContent = {
   id: string
   path: string
-  kind: 'main' | 'include'
+  absolute_path?: string
+  kind: 'main' | 'include' | 'subscription' | 'generated'
   content_sha256: string
   bytes: number
+  line_count: number
+  content: string
+}
+
+export type DaeConfigSource = DaeConfigSourceContent & {
   writable: boolean
   loaded_at: DaeTimestamp
-  line_count: number
-  content?: string
 }
 
 export type DaeConfigSnapshot = {
@@ -596,6 +769,14 @@ export type DaeConfigSnapshot = {
   sources: DaeConfigSource[]
   diagnostics: DaeDiagnostic[]
   secrets_redacted: boolean
+}
+
+export type DaeConfigDiagnosticsError = {
+  error: {
+    code: 'unsupported_value'
+    message: string
+    details: { diagnostics: DaeDiagnostic[] }
+  }
 }
 
 export type DaeDiagnostic = {
@@ -614,6 +795,16 @@ export type DaeConfigValidation = {
   diagnostics: DaeDiagnostic[]
 }
 
+export type DaeEbpfAttachment = {
+  name: string
+  kind: 'interface' | 'cgroup' | 'other'
+  interface?: string
+  direction?: 'ingress' | 'egress'
+  cgroup?: string
+  hook?: string
+  state: 'attached' | 'detached' | 'error' | 'unknown'
+}
+
 export type DaeDatapath = {
   observed_at: DaeTimestamp
   kind: string
@@ -627,7 +818,7 @@ export type DaeDatapath = {
     health: string
     last_error: string | null
     checked_at: DaeTimestamp
-    attachments?: { name: string; interface: string; direction: string; state: string }[]
+    attachments?: DaeEbpfAttachment[]
     maps?: {
       state: string
       conn_state: { occupancy: number | null; capacity: number; occupancy_known: boolean } | null
@@ -656,6 +847,7 @@ export type DaeMemoryHistory = {
     sampled_at: DaeTimestamp
     rss_bytes: DaeUInt64 | null
     cgroup_current_bytes: DaeUInt64 | null
+    kernel_ebpf_bytes?: DaeUInt64 | null
   }[]
 }
 

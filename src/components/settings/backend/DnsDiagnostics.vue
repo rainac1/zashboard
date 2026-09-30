@@ -11,7 +11,7 @@
     <DnsQuery v-if="activeTab === 'query'" />
     <DaeDnsPanel
       v-else
-      :view="activeTab === 'cache' ? 'cache' : 'log'"
+      :view="activeTab"
     />
   </div>
 </template>
@@ -24,7 +24,7 @@ import DnsQuery from '@/components/settings/backend/DnsQuery.vue'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-type DnsTab = 'query' | 'cache' | 'log'
+type DnsTab = 'query' | 'cache' | 'log' | 'rules'
 
 const { t } = useI18n()
 
@@ -34,6 +34,7 @@ const availableTabs = computed<DnsTab[]>(() => {
   if (can('dnsQuery')) tabs.push('query')
   if (can('dnsCache')) tabs.push('cache')
   if (can('dnsLog')) tabs.push('log')
+  if (can('dnsRules')) tabs.push('rules')
 
   return tabs
 })
@@ -42,6 +43,7 @@ const TAB_LABEL: Record<DnsTab, string> = {
   query: 'DNSQuery',
   cache: 'daeDnsCache',
   log: 'daeDnsLog',
+  rules: 'daeDnsRules',
 }
 
 const activeTab = ref<DnsTab>(availableTabs.value[0] ?? 'query')
