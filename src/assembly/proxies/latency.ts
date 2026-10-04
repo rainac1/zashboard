@@ -154,14 +154,19 @@ export const proxyGroupLatencyTest = async (proxyGroupName: string) => {
   const proxyNode = proxyMap.value[proxyGroupName]
   const all = (proxyNode.all ?? []).filter(isLatencyTestable)
   const url = getTestUrl(proxyGroupName)
+  const groupType = proxyNode.type.toLowerCase() as PROXY_TYPE
 
-  if (
-    speedtestMode.value === SPEEDTEST_MODE.DASHBOARD &&
+  // Selector 实际只用当前选中的那个出口,把整组丢给内核测会连子 Selector 里没被选中的
+  // 节点一起测(内核 URLTestOutbounds 会递归展开)。所以 Selector 一律走面板路径:逐个
+  // 成员发测速请求,成员若是嵌套 Selector,latencyTestForSingle 会先递归解析
+  // (getNowProxyNodeName)到它当前实际使用的出口,只请求测那个出口 —— 内核控制模式下
+  // 也一样。LoadBalance / Smart 的成员都在被使用,仍按测速方式决定面板控制还是内核控制。
+  const usePanelControl =
     can('nodeLatencyTest') &&
-    [PROXY_TYPE.Selector, PROXY_TYPE.LoadBalance, PROXY_TYPE.Smart].includes(
-      proxyNode.type.toLowerCase() as PROXY_TYPE,
-    )
-  ) {
+    [PROXY_TYPE.Selector, PROXY_TYPE.LoadBalance, PROXY_TYPE.Smart].includes(groupType) &&
+    (groupType === PROXY_TYPE.Selector || speedtestMode.value === SPEEDTEST_MODE.DASHBOARD)
+
+  if (usePanelControl) {
     if (proxyNode.fixed) {
       driver()
         .proxies.clearFixed(proxyGroupName)
