@@ -128,29 +128,55 @@ const getProtocolFromQuery = (query: URLSearchParams) => {
   return window.location.protocol.replace(':', '')
 }
 
-export const getBackendFromUrl = () => {
-  const query = new URLSearchParams(
-    window.location.search || location.hash.match(/\?.*$/)?.[0]?.replace('?', ''),
+const getUrlQuery = () => {
+  const query = new URLSearchParams(window.location.search)
+
+  new URLSearchParams(location.hash.match(/\?.*$/)?.[0]).forEach((value, key) =>
+    query.set(key, value),
   )
 
-  if (query.has('hostname')) {
-    // 后端类型:'singbox' 走 sing-box API(gRPC),'dae' 走 dae 原生 API,其余(含缺省)按 'clash' 处理。
-    const typeParam = query.get('type')
-    const type: BackendType =
-      typeParam === 'dae' ? 'dae' : typeParam === 'singbox' ? 'singbox' : 'clash'
+  return query
+}
 
-    return {
-      type,
-      protocol: getProtocolFromQuery(query),
-      secondaryPath: query.get('secondaryPath') || '',
-      host: query.get('hostname') as string,
-      port: query.get('port') as string,
-      password: query.get('secret') || '',
-      label: query.get('label') || '',
-      disableUpgradeCore:
-        query.get('disableUpgradeCore') === '1' || query.get('disableUpgradeCore') === 'core',
-      disableTunMode: query.get('disableTunMode') === '1' || query.get('disableTunMode') === 'tun',
-    }
+// 后端类型:'singbox' 走 sing-box API(gRPC),'dae' 走 dae 原生 API,其余(含缺省)按 'clash' 处理。
+const getBackendTypeFromQuery = (query: URLSearchParams): BackendType => {
+  const typeParam = query.get('type')
+
+  return typeParam === 'dae' ? 'dae' : typeParam === 'singbox' ? 'singbox' : 'clash'
+}
+
+const getBackendFromQuery = (
+  query: URLSearchParams,
+  host: string,
+  port: string,
+): Omit<Backend, 'uuid'> => ({
+  type: getBackendTypeFromQuery(query),
+  protocol: getProtocolFromQuery(query),
+  secondaryPath: query.get('secondaryPath') || '',
+  host,
+  port,
+  password: query.get('secret') || '',
+  label: query.get('label') || '',
+  disableUpgradeCore:
+    query.get('disableUpgradeCore') === '1' || query.get('disableUpgradeCore') === 'core',
+  disableTunMode: query.get('disableTunMode') === '1' || query.get('disableTunMode') === 'tun',
+})
+
+export const getBackendFromUrl = () => {
+  const query = getUrlQuery()
+
+  if (!query.has('hostname')) return null
+
+  return getBackendFromQuery(query, query.get('hostname') as string, query.get('port') as string)
+}
+
+export const getOriginBackend = () => {
+  const { protocol, hostname, port } = window.location
+
+  if (protocol !== 'http:' && protocol !== 'https:') return null
+
+  return {
+    ...getBackendFromQuery(getUrlQuery(), hostname, port || (protocol === 'https:' ? '443' : '80')),
+    protocol: protocol.slice(0, -1),
   }
-  return null
 }

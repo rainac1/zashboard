@@ -75,7 +75,26 @@ http://host:port/#/setup?hostname=ipordomain&port=9090&secret=123456
    - Set '1' to hide tun switch
 
 8. **`type`**
-   - Selects the backend API: `clash` (Clash REST/WS) or `singbox` (sing-box native).
+   - Selects the backend API: `clash` (Clash REST/WS), `dae` (dae native API) or `singbox` (sing-box native).
    - Default: `clash`
+
+#### Automatic backend connection
+
+When no backends have been saved and `hostname` is not specified in the URL query, zashboard tries to connect to the Clash API at the page's origin (the same protocol, hostname, and port). This applies to pages served over HTTP or HTTPS. The `protocol` and `port` URL parameters do not change this address. URL parameters such as `secret`, `label`, `type`, `disableUpgradeCore`, and `disableTunMode` also apply to the detected backend.
+
+For example, with this mihomo configuration on remote server `192.168.1.1`:
+
+```yaml
+external-ui: ui
+external-ui-url: https://github.com/Zephyruso/zashboard/archive/refs/heads/gh-pages.zip
+external-controller: 0.0.0.0:9090
+secret: ''
+```
+
+Opening `http://192.168.1.1:9090/ui` automatically connects to `http://192.168.1.1:9090` and saves the backend if the API probe succeeds. If mihomo requires authentication, pass its secret using `http://192.168.1.1:9090/ui?secret=your-secret`.
+
+`http://127.0.0.1:9090` with an empty secret is probed at the same time as a fallback, and the same-origin backend takes priority. If a candidate rejects the secret, the form keeps that address so you only need to enter the secret. If no candidate responds, the form shows `http://127.0.0.1:9090` for manual configuration. Editing or submitting the form during detection cancels automatic connection.
+
+Saved backends and explicit URL backend parameters retain their existing behavior. Automatic same-origin detection does not override them.
 
 ### I code not only for fun, but even more for money. If you really want to donate, send USDC on Polygon to `0xf51f0c7142e5771cf8fc7c3c498b0819b4239c21` to help the author buy a McDonald's 😊

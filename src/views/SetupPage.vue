@@ -65,13 +65,15 @@ import { syncSettingsFromCore } from '@/helper/auto-import-settings'
 import { useBackendReachability } from '@/composables/use-backend-reachability'
 import { describeProbeFailure } from '@/helper/connectivity'
 import { showNotification } from '@/helper/notification'
-import { getBackendFromUrl, getBackendProbeUrl } from '@/helper/utils'
+import { getBackendFromUrl, getBackendProbeUrl, getOriginBackend } from '@/helper/utils'
 import router from '@/router'
 import { addBackend, backendList, openBackendManager } from '@/store/setup'
 import type { Backend, BackendType } from '@/types'
 import { computed, ref, watch } from 'vue'
 
-const form = ref<Omit<Backend, 'uuid'>>({
+type SetupForm = Omit<Backend, 'uuid'>
+
+const defaultForm: SetupForm = {
   type: 'clash' as BackendType,
   protocol: 'http',
   host: '127.0.0.1',
@@ -79,16 +81,21 @@ const form = ref<Omit<Backend, 'uuid'>>({
   secondaryPath: '',
   password: '',
   label: '',
-})
+}
+
+const urlBackend = getBackendFromUrl()
+const originBackend = !urlBackend && backendList.value.length === 0 ? getOriginBackend() : null
+const form = ref<SetupForm>({ ...(originBackend ?? defaultForm) })
 
 const reachability = useBackendReachability(form)
 
 const isSubmitting = ref(false)
 const canSubmit = computed(() => reachability.status.value === 'online' && !isSubmitting.value)
 
-type SetupForm = Omit<Backend, 'uuid'>
+let detectController: AbortController | null = null
 
-const finishLogin = async () => {
+const login = async (backend: SetupForm) => {
+  addBackend(backend)
   await router.push({ name: ROUTE_NAME.proxies })
 
   try {
@@ -98,17 +105,18 @@ const finishLogin = async () => {
   }
 }
 
-const handleSubmit = async (setupForm: SetupForm, quiet = false) => {
+const handleSubmit = async (setupForm: SetupForm) => {
   const { protocol, host, port } = setupForm
 
   if (!protocol || !host || !port) return
   if (isSubmitting.value) return
 
+  detectController?.abort()
+
   if (
     window.location.protocol === 'https:' &&
     protocol === 'http' &&
-    !['::1', '0.0.0.0', '127.0.0.1', 'localhost'].includes(host) &&
-    !quiet
+    !['::1', '0.0.0.0', '127.0.0.1', 'localhost'].includes(host)
   ) {
     showNotification({ content: 'protocolTips' })
   }
@@ -119,14 +127,9 @@ const handleSubmit = async (setupForm: SetupForm, quiet = false) => {
     const result = await probeBackend({ uuid: '', ...setupForm }, undefined, undefined, true)
 
     if (!result.ok) {
-      if (result.kind === 'unauthorized' && !quiet) {
-        showNotification({
-          content: await describeProbeFailure(result, getBackendProbeUrl(setupForm)),
-          type: 'alert-error',
-        })
-      } else if (setupForm === form.value) {
+      if (result.kind !== 'unauthorized' && setupForm === form.value) {
         reachability.retry()
-      } else if (!quiet) {
+      } else {
         showNotification({
           content: await describeProbeFailure(result, getBackendProbeUrl(setupForm)),
           type: 'alert-error',
@@ -135,25 +138,47 @@ const handleSubmit = async (setupForm: SetupForm, quiet = false) => {
       return
     }
 
-    addBackend(setupForm)
-    await finishLogin()
+    await login(setupForm)
   } finally {
     isSubmitting.value = false
   }
 }
 
-const backend = getBackendFromUrl()
-
-if (backend) {
-  handleSubmit(backend)
-} else if (backendList.value.length === 0) {
-  const stopAutoLogin = watch(
-    () => reachability.status.value,
-    (status) => {
-      if (status === 'checking') return
-      stopAutoLogin()
-      if (status === 'online') handleSubmit(form.value, true)
-    },
+const detectBackend = async (candidates: SetupForm[], signal: AbortSignal) => {
+  const probes = candidates.map((candidate) =>
+    probeBackend({ uuid: '', ...candidate }, undefined, signal, true),
   )
+
+  for (const [index, probe] of probes.entries()) {
+    const result = await probe
+
+    if (result.ok || result.kind === 'unauthorized') {
+      return { backend: candidates[index], ok: result.ok }
+    }
+  }
+
+  return null
+}
+
+const autoDetect = async (candidates: SetupForm[]) => {
+  const controller = new AbortController()
+  const stopOnEdit = watch(form, () => controller.abort(), { deep: true })
+
+  detectController = controller
+
+  const detected = await detectBackend(candidates, controller.signal)
+
+  stopOnEdit()
+  if (controller.signal.aborted) return
+  controller.abort()
+
+  form.value = { ...(detected?.backend ?? defaultForm) }
+  if (detected?.ok) await login(detected.backend)
+}
+
+if (urlBackend) {
+  handleSubmit(urlBackend)
+} else if (backendList.value.length === 0) {
+  autoDetect(originBackend ? [originBackend, defaultForm] : [defaultForm])
 }
 </script>
