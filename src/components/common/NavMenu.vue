@@ -19,7 +19,6 @@
         v-for="item in items"
         :key="item.key"
         @mouseenter="(e) => mouseenterHandler(e, item)"
-        @focusin="playing.add(item.key)"
       >
         <component
           :is="item.to ? RouterLink : 'button'"
@@ -27,7 +26,7 @@
           class="nav-item w-full text-left"
           :data-nav-key="item.key"
           :aria-label="item.label"
-          @click="!item.to && emit('select', item.key)"
+          @click="clickHandler(item)"
         >
           <component
             :is="item.icon"
@@ -109,8 +108,12 @@ const indicatorStyle = ref({
 })
 const { showTip } = useTooltip()
 
-const mouseenterHandler = (e: MouseEvent, item: NavMenuItem) => {
+const clickHandler = (item: NavMenuItem) => {
   playing.add(item.key)
+  if (!item.to) emit('select', item.key)
+}
+
+const mouseenterHandler = (e: MouseEvent, item: NavMenuItem) => {
   if (!props.collapsed) return
   showTip(e, item.label, { placement: 'right' })
 }
@@ -202,38 +205,28 @@ defineExpose({ syncIndicator })
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .motion-tiles,
-  .motion-gear,
-  .motion-fan {
-    transition: transform 0.5s cubic-bezier(0.34, 1.4, 0.64, 1);
-  }
-
-  .motion-gear {
-    transition-duration: 0.7s;
-  }
-
   .motion-fan {
     transform-origin: 30% 80%;
-  }
-
-  .nav-item:hover .motion-tiles,
-  .nav-item:focus-visible .motion-tiles {
-    transform: rotate(90deg);
-  }
-
-  .nav-item:hover .motion-gear,
-  .nav-item:focus-visible .motion-gear {
-    transform: rotate(180deg);
-  }
-
-  .nav-item:hover .motion-fan,
-  .nav-item:focus-visible .motion-fan {
-    transform: rotate(-14deg);
   }
 
   .is-playing {
     animation-duration: 0.6s;
     animation-timing-function: ease-in-out;
+  }
+
+  .is-playing.motion-tiles {
+    animation-name: nav-tiles;
+    animation-timing-function: cubic-bezier(0.34, 1.4, 0.64, 1);
+  }
+
+  .is-playing.motion-gear {
+    animation-name: nav-gear;
+    animation-duration: 0.7s;
+    animation-timing-function: cubic-bezier(0.34, 1.4, 0.64, 1);
+  }
+
+  .is-playing.motion-fan {
+    animation-name: nav-fan;
   }
 
   .is-playing.motion-pop {
@@ -260,6 +253,24 @@ defineExpose({ syncIndicator })
 
   .is-playing.motion-bounce {
     animation-name: nav-bounce;
+  }
+}
+
+@keyframes nav-tiles {
+  to {
+    transform: rotate(90deg);
+  }
+}
+
+@keyframes nav-gear {
+  to {
+    transform: rotate(180deg);
+  }
+}
+
+@keyframes nav-fan {
+  50% {
+    transform: rotate(-14deg);
   }
 }
 
