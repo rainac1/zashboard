@@ -214,6 +214,8 @@ const ruleColumns: ColumnDef<Rule>[] = [
 
       return typeof size === 'number' && size !== -1 ? size : ''
     },
+    sortingFn: (prev, next) =>
+      (getRuleSize(prev.original) ?? -1) - (getRuleSize(next.original) ?? -1),
     cell: ({ getValue }) => {
       const size = getValue<number | ''>()
 
