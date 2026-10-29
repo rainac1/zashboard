@@ -39,8 +39,6 @@ const createAggregationMaps = (): AggregationMaps => ({
   [ConnectionHistoryType.ProxyGroup]: new Map<string, ConnectionHistoryData>(),
 })
 
-let aggMaps = createAggregationMaps()
-
 const emptyView = (): Record<ConnectionHistoryType, ConnectionHistoryData[]> => ({
   [ConnectionHistoryType.SourceIP]: [],
   [ConnectionHistoryType.Destination]: [],
@@ -52,25 +50,22 @@ const emptyView = (): Record<ConnectionHistoryType, ConnectionHistoryData[]> => 
 export const aggregatedDataMap = shallowRef(emptyView())
 
 const VIEW_REFRESH_MS = 5_000
-const FLUSH_EVERY_TICKS = 6
+const FLUSH_DELAY_MS = 30_000
 const TRIM_THRESHOLD = 2000
 const TRIM_KEEP = 1500
 
-let ready = false
-let sessionUuid = ''
-let sessionGeneration = 0
-let initEpoch = 0
-let lastClearEpoch = 0
-let dirty = false
-const dirtyTypes = new Set<ConnectionHistoryType>()
-
-interface InitContext {
-  epoch: number
+interface Session {
   uuid: string
+  maps: AggregationMaps
   pending: Connection[]
+  ready: boolean
+  dirty: boolean
+  disposed: boolean
 }
 
-let currentContext: InitContext | undefined
+let session: Session | undefined
+let viewDirty = false
+let flushTimer: ReturnType<typeof setTimeout> | undefined
 let persistenceQueue: Promise<void> = Promise.resolve()
 
 const enqueuePersistence = <T>(operation: () => Promise<T>) => {
@@ -83,31 +78,22 @@ const enqueuePersistence = <T>(operation: () => Promise<T>) => {
   return result
 }
 
-const markAllTypesDirty = () => {
-  dirtyTypes.clear()
-  for (const type of allHistoryTypes) {
-    dirtyTypes.add(type)
-  }
-}
-
 const refreshView = () => {
-  if (!dirtyTypes.size) {
+  if (!viewDirty || !session?.ready) {
     return
   }
-  const next = { ...aggregatedDataMap.value }
+  const next = emptyView()
 
-  for (const type of dirtyTypes) {
-    next[type] = Array.from(aggMaps[type].values())
+  for (const type of allHistoryTypes) {
+    next[type] = Array.from(session.maps[type].values())
   }
-  dirtyTypes.clear()
+  viewDirty = false
   aggregatedDataMap.value = next
 }
 
-const trimMap = (maps: AggregationMaps, type: ConnectionHistoryType) => {
-  const map = maps[type]
-
+const trimMap = (map: Map<string, ConnectionHistoryData>) => {
   if (map.size <= TRIM_THRESHOLD) {
-    return false
+    return
   }
   const kept = Array.from(map.values())
     .sort((a, b) => b.download - a.download)
@@ -117,7 +103,6 @@ const trimMap = (maps: AggregationMaps, type: ConnectionHistoryType) => {
   for (const item of kept) {
     map.set(item.key, item)
   }
-  return true
 }
 
 const snapshotMaps = (
@@ -144,34 +129,31 @@ const saveSnapshot = async (
   return success
 }
 
-const flushCurrentSession = () => {
-  if (!sessionUuid || !dirty) {
-    return Promise.resolve()
+const flush = (target = session) => {
+  clearTimeout(flushTimer)
+  flushTimer = undefined
+  if (!target?.ready || !target.dirty) {
+    return
   }
 
-  for (const type of allHistoryTypes) {
-    if (trimMap(aggMaps, type)) {
-      dirtyTypes.add(type)
-    }
-  }
+  const snapshot = snapshotMaps(target.maps)
 
-  const targetUuid = sessionUuid
-  const targetGeneration = sessionGeneration
-  const snapshot = snapshotMaps(aggMaps)
-
-  dirty = false
-  return enqueuePersistence(async () => {
-    const success = await saveSnapshot(targetUuid, snapshot)
-
-    if (!success && sessionUuid === targetUuid && sessionGeneration === targetGeneration) {
-      dirty = true
+  target.dirty = false
+  enqueuePersistence(async () => {
+    if (!(await saveSnapshot(target.uuid, snapshot)) && !target.disposed) {
+      markDirty(target)
     }
   })
 }
 
-const accumulateInto = (maps: AggregationMaps, connections: Connection[]) => {
+const markDirty = (target: Session) => {
+  target.dirty = true
+  flushTimer ??= setTimeout(() => flush(), FLUSH_DELAY_MS)
+}
+
+const accumulate = (target: Session, connections: Connection[]) => {
   for (const type of allHistoryTypes) {
-    const map = maps[type]
+    const map = target.maps[type]
 
     for (const item of aggregateConnections(connections, type)) {
       const existing = map.get(item.key)
@@ -184,13 +166,10 @@ const accumulateInto = (maps: AggregationMaps, connections: Connection[]) => {
         map.set(item.key, item)
       }
     }
+    trimMap(map)
   }
-}
-
-const accumulateCurrent = (connections: Connection[]) => {
-  accumulateInto(aggMaps, connections)
-  markAllTypesDirty()
-  dirty = true
+  viewDirty = true
+  markDirty(target)
 }
 
 const loadHistoryMaps = async (targetUuid: string) => {
@@ -211,116 +190,71 @@ const loadHistoryMaps = async (targetUuid: string) => {
   return maps
 }
 
-const resetCurrentSession = (targetUuid: string) => {
-  ready = false
-  sessionUuid = targetUuid
-  sessionGeneration++
-  aggMaps = createAggregationMaps()
-  dirty = false
-  viewTick = 0
-  markAllTypesDirty()
+const startSession = async (
+  targetUuid: string,
+  inheritPending: boolean,
+  load: () => Promise<AggregationMaps>,
+) => {
+  const prev = session
+  const next: Session = {
+    uuid: targetUuid,
+    maps: createAggregationMaps(),
+    pending: [],
+    ready: false,
+    dirty: false,
+    disposed: false,
+  }
+
+  if (prev) {
+    flush(prev)
+    prev.disposed = true
+    if (inheritPending && !prev.ready && prev.uuid === targetUuid) {
+      next.pending = prev.pending
+    }
+  }
+  session = next
+  viewDirty = false
   aggregatedDataMap.value = emptyView()
-}
 
-const settleStaleContext = async (context: InitContext, maps: AggregationMaps) => {
-  if (!context.pending.length || context.epoch < lastClearEpoch) {
+  const maps = await enqueuePersistence(load)
+
+  if (next.disposed) {
     return
   }
-
-  const pending = context.pending.splice(0)
-
-  if (currentContext && currentContext !== context && currentContext.uuid === context.uuid) {
-    currentContext.pending.push(...pending)
-    return
+  next.maps = maps
+  next.ready = true
+  if (next.pending.length) {
+    accumulate(next, next.pending.splice(0))
   }
-
-  accumulateInto(maps, pending)
-  const snapshot = snapshotMaps(maps)
-
-  await enqueuePersistence(() => saveSnapshot(context.uuid, snapshot).then(() => undefined))
-}
-
-let viewTick = 0
-setInterval(() => {
-  if (!ready || document.hidden) {
-    return
-  }
+  viewDirty = true
   refreshView()
-  if (++viewTick >= FLUSH_EVERY_TICKS) {
-    viewTick = 0
-    flushCurrentSession()
+}
+
+setInterval(() => {
+  if (!document.hidden) {
+    refreshView()
   }
 }, VIEW_REFRESH_MS)
 
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden && ready) {
-    flushCurrentSession()
-  }
-})
-window.addEventListener('pagehide', () => {
-  if (ready) {
-    flushCurrentSession()
+  if (document.hidden) {
+    flush()
+  } else {
+    refreshView()
   }
 })
 
-export const initAggregatedDataMap = async () => {
-  flushCurrentSession()
+export const initAggregatedDataMap = () => {
+  const targetUuid = uuid()
 
-  const context: InitContext = {
-    epoch: ++initEpoch,
-    uuid: uuid(),
-    pending: [],
-  }
-
-  currentContext = context
-  resetCurrentSession(context.uuid)
-
-  const loadedMaps = await enqueuePersistence(() => loadHistoryMaps(context.uuid))
-
-  if (context.epoch !== initEpoch) {
-    await settleStaleContext(context, loadedMaps)
-    return
-  }
-
-  aggMaps = loadedMaps
-  ready = true
-  if (context.pending.length) {
-    accumulateCurrent(context.pending.splice(0))
-  }
-  if (currentContext === context) {
-    currentContext = undefined
-  }
-  markAllTypesDirty()
-  refreshView()
+  return startSession(targetUuid, true, () => loadHistoryMaps(targetUuid))
 }
 
-export const clearConnectionHistory = async () => {
-  const context: InitContext = {
-    epoch: ++initEpoch,
-    uuid: uuid(),
-    pending: [],
-  }
-
-  lastClearEpoch = context.epoch
-  currentContext = context
-  resetCurrentSession(context.uuid)
-
-  await enqueuePersistence(() => clearConnectionHistoryFromIndexedDB())
-
-  if (context.epoch !== initEpoch) {
-    await settleStaleContext(context, createAggregationMaps())
-    return
-  }
-
-  ready = true
-  if (context.pending.length) {
-    accumulateCurrent(context.pending.splice(0))
-  }
-  if (currentContext === context) {
-    currentContext = undefined
-  }
-  refreshView()
-}
+export const clearConnectionHistory = () =>
+  startSession(uuid(), false, async () => {
+    await clearConnectionHistoryFromIndexedDB()
+    return createAggregationMaps()
+  })
 
 export const aggregateConnections = (
   connections: Connection[],
@@ -396,20 +330,15 @@ export const mergeAggregatedData = (
 }
 
 export const saveConnectionHistory = (newClosedConnections: Connection[]) => {
-  if (newClosedConnections.length === 0) {
+  if (!newClosedConnections.length || !session || session.uuid !== uuid()) {
     return
   }
 
-  const targetUuid = uuid()
-
-  if (!ready || targetUuid !== sessionUuid) {
-    if (currentContext?.uuid === targetUuid) {
-      currentContext.pending.push(...newClosedConnections)
-    }
-    return
+  if (session.ready) {
+    accumulate(session, newClosedConnections)
+  } else {
+    session.pending.push(...newClosedConnections)
   }
-
-  accumulateCurrent(newClosedConnections)
 }
 
 watch(
