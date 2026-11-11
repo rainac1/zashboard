@@ -33,9 +33,10 @@ export const fromNow = (timestamp: string | number) => {
 export const prettyUptimeHelper = (seconds: number) => {
   if (!Number.isFinite(seconds) || seconds < 0) return '-'
 
-  const uptime = dayjs.duration(seconds, 'seconds')
+  const days = Math.floor(seconds / 86400)
+  const time = dayjs.duration(seconds % 86400, 'seconds').format('HH:mm:ss')
 
-  return uptime.days() > 0 ? uptime.format('D[d] HH:mm:ss') : uptime.format('HH:mm:ss')
+  return days > 0 ? `${days}d ${time}` : time
 }
 
 export const getDashboardSettingsFromStorage = () => {
@@ -78,13 +79,19 @@ export const resetSettings = () => {
   window.location.reload()
 }
 
+export const getHostFromBackend = (end: { host: string; port: string }) => {
+  const host = end.host.includes(':') && !end.host.startsWith('[') ? `[${end.host}]` : end.host
+
+  return `${host}:${end.port}`
+}
+
 export const getUrlFromBackend = (end: {
   protocol: string
   host: string
   port: string
   secondaryPath?: string
 }) => {
-  return `${end.protocol}://${end.host}:${end.port}${end.secondaryPath || ''}`
+  return `${end.protocol}://${getHostFromBackend(end)}${end.secondaryPath || ''}`
 }
 
 // sing-box 后端复用顶层连接字段作为 gRPC baseUrl(secondaryPath 留空)。
@@ -103,7 +110,7 @@ export const getBackendProbeUrl = (end: Omit<Backend, 'uuid'>) =>
   end.type === 'singbox' ? getSingboxUrlFromBackend(end) : getUrlFromBackend(end)
 
 export const getLabelFromBackend = (end: Omit<Backend, 'uuid'>) => {
-  return end.label || `${end.host}:${end.port}`
+  return end.label || getHostFromBackend(end)
 }
 
 export const getMinCardWidth = (size: PROXY_CARD_SIZE) => {
